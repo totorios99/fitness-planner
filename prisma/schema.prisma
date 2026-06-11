@@ -1,0 +1,95 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+}
+
+model Exercise {
+  id               String            @id @default(cuid())
+  name             String            @unique
+  slug             String            @unique
+  category         String
+  equipment        String
+  primaryMuscles   String
+  secondaryMuscles String            @default("[]")
+  imagePath        String?
+  instructions     String?
+  createdAt        DateTime          @default(now())
+  sessionExercises SessionExercise[]
+  routineExercises RoutineExercise[]
+}
+
+model WorkoutSession {
+  id        String            @id @default(cuid())
+  date      DateTime
+  label     String
+  notes     String?
+  source    String            @default("manual")
+  createdAt DateTime          @default(now())
+  exercises SessionExercise[]
+}
+
+model SessionExercise {
+  id         String         @id @default(cuid())
+  sessionId  String
+  session    WorkoutSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  exerciseId String?
+  exercise   Exercise?      @relation(fields: [exerciseId], references: [id])
+  rawName    String
+  orderIndex Int
+  sets       SetLog[]
+}
+
+model SetLog {
+  id                String          @id @default(cuid())
+  sessionExerciseId String
+  sessionExercise   SessionExercise @relation(fields: [sessionExerciseId], references: [id], onDelete: Cascade)
+  setNumber         Int
+  weightLb          Float
+  reps              Int
+  createdAt         DateTime        @default(now())
+}
+
+model Routine {
+  id          String       @id @default(cuid())
+  name        String
+  description String?
+  daysPerWeek Int
+  createdAt   DateTime     @default(now())
+  days        RoutineDay[]
+}
+
+model RoutineDay {
+  id           String            @id @default(cuid())
+  routineId    String
+  routine      Routine           @relation(fields: [routineId], references: [id], onDelete: Cascade)
+  dayIndex     Int
+  label        String
+  exercises    RoutineExercise[]
+  plannerSlots PlannerSlot[]
+}
+
+model PlannerSlot {
+  id           String      @id @default(cuid())
+  weekStart    DateTime
+  dayOfWeek    Int
+  routineDayId String?
+  routineDay   RoutineDay? @relation(fields: [routineDayId], references: [id], onDelete: SetNull)
+  createdAt    DateTime    @default(now())
+
+  @@unique([weekStart, dayOfWeek])
+}
+
+model RoutineExercise {
+  id           String     @id @default(cuid())
+  routineDayId String
+  routineDay   RoutineDay @relation(fields: [routineDayId], references: [id], onDelete: Cascade)
+  exerciseId   String
+  exercise     Exercise   @relation(fields: [exerciseId], references: [id])
+  orderIndex   Int
+  targetSets   Int
+  targetReps   String
+  notes        String?
+}

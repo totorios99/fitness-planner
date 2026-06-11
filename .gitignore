@@ -1,0 +1,8 @@
+.next/
+node_modules/
+.env
+*.db
+*.db-journal
+prisma/migrations/
+.DS_Store
+tsconfig.tsbuildinfo

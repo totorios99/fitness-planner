@@ -1,0 +1,12 @@
+services:
+  forma:
+    build: .
+    container_name: forma
+    ports:
+      - "3001:3000"
+    volumes:
+      - /DATA/AppData/forma:/data
+    environment:
+      - DATABASE_URL=file:/data/forma.db
+      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
+    restart: unless-stopped

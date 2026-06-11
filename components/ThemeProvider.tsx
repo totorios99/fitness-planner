@@ -1,0 +1,29 @@
+'use client'
+
+import { createContext, useContext, useEffect, useState } from 'react'
+
+type Theme = 'light' | 'dark'
+const ThemeCtx = createContext<{ theme: Theme; toggle: () => void }>({
+  theme: 'light',
+  toggle: () => {},
+})
+
+export function ThemeProvider({ children }: { children: React.ReactNode }) {
+  const [theme, setTheme] = useState<Theme>('light')
+
+  useEffect(() => {
+    const stored = localStorage.getItem('forma-theme') as Theme | null
+    if (stored) setTheme(stored)
+  }, [])
+
+  useEffect(() => {
+    document.documentElement.setAttribute('data-theme', theme)
+    localStorage.setItem('forma-theme', theme)
+  }, [theme])
+
+  const toggle = () => setTheme(t => (t === 'light' ? 'dark' : 'light'))
+
+  return <ThemeCtx.Provider value={{ theme, toggle }}>{children}</ThemeCtx.Provider>
+}
+
+export const useTheme = () => useContext(ThemeCtx)
