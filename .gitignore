@@ -6,3 +6,9 @@ node_modules/
 prisma/migrations/
 .DS_Store
 tsconfig.tsbuildinfo
+
+# Design handoffs (spec references, not source) + personal data exports
+design_handoff_*/
+*.csv
+*.zip
+strong_*.txt
