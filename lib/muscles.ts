@@ -19,6 +19,34 @@ export const MUSCLES: Record<MuscleKey, { label: string; hue: number }> = {
   core:       { label: 'Core',        hue: 220 },
 }
 
+const MUSCLE_VAR_MAP: Record<string, string> = {
+  chest:      '--m-chest',
+  back:       '--m-back',
+  lats:       '--m-back',
+  traps:      '--m-back',
+  shoulders:  '--m-shoulders',
+  triceps:    '--m-arms',
+  biceps:     '--m-arms',
+  forearms:   '--m-arms',
+  quads:      '--m-legs',
+  hamstrings: '--m-legs',
+  glutes:     '--m-legs',
+  calves:     '--m-legs',
+  core:       '--m-core',
+}
+
+export function muscleVar(key: string): string {
+  return MUSCLE_VAR_MAP[key] ?? '--m-core'
+}
+
+export type MuscleGroup = 'chest' | 'back' | 'shoulders' | 'arms' | 'legs' | 'core'
+
+// Collapse a fine-grained muscle key (e.g. 'triceps', 'quads') into one of the
+// 6 display groups used by the planner / volume meters.
+export function muscleGroup(key: string): MuscleGroup {
+  return (MUSCLE_VAR_MAP[key]?.replace('--m-', '') ?? 'core') as MuscleGroup
+}
+
 export function muscleColor(key: string, opacity = 1): string {
   const m = MUSCLES[key as MuscleKey]
   if (!m) return `hsla(0,0%,50%,${opacity})`

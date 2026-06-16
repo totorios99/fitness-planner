@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
+import { Icon } from '@/components/Icon'
 
 const DEFAULT_DAY_LABELS = ['Push A', 'Pull A', 'Legs A', 'Push B', 'Pull B', 'Legs B', 'Rest']
 
@@ -58,83 +59,80 @@ export default function NewRoutineButton() {
 
   return (
     <>
-      <button className="btn btn-primary btn-sm" onClick={() => setOpen(true)}>
-        + New
+      <button className="btn btn-primary" style={{ flexShrink: 0 }} onClick={() => setOpen(true)}>
+        <Icon name="plus" size={15} /> New routine
       </button>
 
       {open && (
-        <div
-          style={{ position: 'fixed', inset: 0, background: 'var(--bg-overlay)', zIndex: 200, display: 'flex', alignItems: 'flex-end', justifyContent: 'center' }}
-          onClick={handleClose}
-        >
-          <div
-            style={{ background: 'var(--bg-elev)', width: '100%', maxWidth: 540, borderRadius: 'var(--r-xl) var(--r-xl) 0 0', padding: 20, maxHeight: '85vh', overflowY: 'auto' }}
-            onClick={e => e.stopPropagation()}
-          >
-            <div style={{ fontWeight: 700, fontSize: 18, marginBottom: 20 }}>New Routine</div>
-
-            <div className="form-row">
-              <label className="form-label">Name</label>
-              <input
-                className="form-input"
-                placeholder="e.g. Upper / Lower"
-                value={name}
-                onChange={e => setName(e.target.value)}
-                autoFocus
-              />
+        <div className="sheet-wrap" onClick={e => { if (e.target === e.currentTarget) handleClose() }}>
+          <div className="sheet-modal">
+            <div className="sheet-modal-head">
+              <h3>New routine</h3>
+              <button className="icon-btn" onClick={handleClose}><Icon name="x" size={18} /></button>
             </div>
 
-            <div className="form-row">
-              <label className="form-label">Description (optional)</label>
-              <input
-                className="form-input"
-                placeholder="e.g. 4-day split"
-                value={description}
-                onChange={e => setDescription(e.target.value)}
-              />
-            </div>
-
-            <div className="form-row">
-              <label className="form-label">Days per week</label>
-              <div className="segmented" style={{ width: 'fit-content' }}>
-                {[2, 3, 4, 5, 6].map(n => (
-                  <button
-                    key={n}
-                    className={`seg-btn${dayCount === n ? ' active' : ''}`}
-                    onClick={() => handleDayCount(n)}
-                    style={{ flex: 'none', minWidth: 44 }}
-                  >
-                    {n}
-                  </button>
-                ))}
+            <div className="sheet-modal-body">
+              <div className="field">
+                <span>Name</span>
+                <input
+                  placeholder="e.g. Upper / Lower"
+                  value={name}
+                  onChange={e => setName(e.target.value)}
+                  onKeyDown={e => e.key === 'Enter' && handleCreate()}
+                  autoFocus
+                />
               </div>
-            </div>
 
-            <div className="form-row">
-              <label className="form-label">Day names</label>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-                {dayLabels.map((label, i) => (
-                  <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                    <span style={{ fontSize: 13, color: 'var(--ink-3)', width: 48, flexShrink: 0 }}>Day {i + 1}</span>
-                    <input
-                      className="form-input"
-                      value={label}
-                      onChange={e => setDayLabels(prev => prev.map((l, j) => j === i ? e.target.value : l))}
-                      style={{ flex: 1 }}
-                    />
-                  </div>
-                ))}
+              <div className="field">
+                <span>Description (optional)</span>
+                <input
+                  placeholder="e.g. 4-day split"
+                  value={description}
+                  onChange={e => setDescription(e.target.value)}
+                />
               </div>
+
+              <div className="field">
+                <span>Days per week</span>
+                <div className="segmented" style={{ width: 'fit-content' }}>
+                  {[2, 3, 4, 5, 6].map(n => (
+                    <button
+                      key={n}
+                      className={`seg-btn${dayCount === n ? ' active' : ''}`}
+                      onClick={() => handleDayCount(n)}
+                      style={{ flex: 'none', minWidth: 44 }}
+                    >
+                      {n}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <div className="field">
+                <span>Day names</span>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                  {dayLabels.map((label, i) => (
+                    <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                      <span style={{ fontSize: 12, color: 'var(--ink-4)', width: 48, flexShrink: 0, fontVariantNumeric: 'tabular-nums' }}>Day {i + 1}</span>
+                      <input
+                        value={label}
+                        onChange={e => setDayLabels(prev => prev.map((l, j) => j === i ? e.target.value : l))}
+                        style={{ flex: 1, height: 42, border: '1px solid var(--line)', borderRadius: 10, background: 'var(--bg)', color: 'var(--ink)', padding: '0 13px', fontSize: 15, outline: 'none' }}
+                      />
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {error && (
+                <div style={{ color: 'var(--danger)', fontSize: 13 }}>{error}</div>
+              )}
             </div>
 
-            {error && (
-              <div style={{ color: 'var(--danger)', fontSize: 14, marginBottom: 12 }}>{error}</div>
-            )}
-
-            <div style={{ display: 'flex', gap: 10, marginTop: 8 }}>
-              <button className="btn btn-ghost" style={{ flex: 1 }} onClick={handleClose}>Cancel</button>
-              <button className="btn btn-primary" style={{ flex: 1 }} onClick={handleCreate} disabled={saving}>
-                {saving ? 'Creating…' : 'Create Routine'}
+            <div className="sheet-modal-foot">
+              <button className="btn btn-ghost" onClick={handleClose}>Cancel</button>
+              <button className="btn btn-primary" onClick={handleCreate} disabled={saving || !name.trim()}>
+                {saving ? 'Creating…' : 'Create routine'}
               </button>
             </div>
           </div>

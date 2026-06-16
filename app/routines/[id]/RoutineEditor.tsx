@@ -273,7 +273,7 @@ export function RoutineEditor({
   routine: { id: string; name: string; description: string | null; daysPerWeek: number; days: RoutineDayData[] }
   allExercises: ExerciseData[]
 }) {
-  const [editMode, setEditMode] = useState(true)
+  const [editMode, setEditMode] = useState(false)
   const [expanded, setExpanded] = useState<Set<string>>(new Set(routine.days.map(d => d.id)))
 
   // Lifted exercises state — keyed by day id. Prevents data loss on collapse.

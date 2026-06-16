@@ -15,6 +15,7 @@ model Exercise {
   primaryMuscles   String
   secondaryMuscles String            @default("[]")
   imagePath        String?
+  images           String            @default("[]")
   instructions     String?
   createdAt        DateTime          @default(now())
   sessionExercises SessionExercise[]

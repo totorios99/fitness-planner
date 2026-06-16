@@ -1,162 +1,183 @@
-import { prisma } from '@/lib/prisma'
-import { parseMuscles, muscleLabel } from '@/lib/muscles'
-import { AppShell } from '@/components/AppShell'
-import { TopNav } from '@/components/TopNav'
-import { SessionCard } from '@/components/SessionCard'
-import { MuscleSummary } from '@/components/MuscleSummary'
 import Link from 'next/link'
+import { AppShell } from '@/components/AppShell'
 import { Icon } from '@/components/Icon'
+import { getHomeData } from '@/lib/home'
+import { muscleVar } from '@/lib/muscles'
+import { Greeting } from '@/components/home/Greeting'
+import { ConsistencyHeatmap, calLevel } from '@/components/home/ConsistencyHeatmap'
+import { QuickActions } from '@/components/home/QuickActions'
 
 export const dynamic = 'force-dynamic'
 
-function startOfWeek(d: Date): Date {
-  const day = d.getDay()
-  const diff = d.getDate() - day + (day === 0 ? -6 : 1)
-  return new Date(d.getFullYear(), d.getMonth(), diff)
+const USER_NAME = 'Antonio'
+
+function fmtK(v: number): string {
+  return v >= 1000 ? `${(v / 1000).toFixed(1)}k` : String(Math.round(v))
+}
+
+function MuscleDots({ ids }: { ids: string[] }) {
+  if (ids.length === 0) return null
+  return (
+    <span style={{ display: 'inline-flex', gap: 4 }}>
+      {ids.map(m => (
+        <span key={m} className="muscle-dot" style={{ background: `var(${muscleVar(m)})`, width: 7, height: 7 }} />
+      ))}
+    </span>
+  )
+}
+
+function dateParts(iso: string) {
+  const d = new Date(iso)
+  return {
+    mon: d.toLocaleDateString('en-US', { month: 'short' }),
+    day: d.getDate(),
+  }
 }
 
 export default async function Home() {
-  const now = new Date()
-  const weekStart = startOfWeek(now)
-
-  const [recent, weekSessions] = await Promise.all([
-    prisma.workoutSession.findMany({
-      orderBy: { date: 'desc' },
-      take: 3,
-      include: {
-        exercises: {
-          include: {
-            exercise: { select: { primaryMuscles: true, secondaryMuscles: true } },
-            sets: { select: { weightLb: true, reps: true } },
-          },
-        },
-      },
-    }),
-    prisma.workoutSession.findMany({
-      where: { date: { gte: weekStart } },
-      include: {
-        exercises: {
-          include: {
-            exercise: { select: { primaryMuscles: true, secondaryMuscles: true } },
-            sets: { select: { weightLb: true, reps: true } },
-          },
-        },
-      },
-    }),
-  ])
-
-  const weekVolume = weekSessions.reduce((sum, s) =>
-    sum + s.exercises.reduce((es, ex) =>
-      es + ex.sets.reduce((ss, set) => ss + set.weightLb * set.reps, 0), 0), 0)
-
-  const muscleSets: Record<string, number> = {}
-  for (const s of weekSessions) {
-    for (const ex of s.exercises) {
-      if (!ex.exercise) continue
-      const n = ex.sets.length
-      for (const m of parseMuscles(ex.exercise.primaryMuscles)) {
-        muscleSets[m] = (muscleSets[m] ?? 0) + n
-      }
-      for (const m of parseMuscles(ex.exercise.secondaryMuscles)) {
-        muscleSets[m] = (muscleSets[m] ?? 0) + Math.ceil(n * 0.5)
-      }
-    }
-  }
-
-  const greeting = (() => {
-    const h = now.getHours()
-    if (h < 12) return 'Good morning'
-    if (h < 17) return 'Good afternoon'
-    return 'Good evening'
-  })()
+  const { thisWeek, recent, consistency } = await getHomeData()
+  const cs = consistency
+  const hasHistory = cs.total > 0
+  const toGo = Math.max(0, thisWeek.goal - thisWeek.sessions)
 
   return (
     <AppShell>
-      <TopNav title="Forma" />
       <div className="page-content">
-        <div className="page-inner">
-          <div>
-            <div className="t-caption">{now.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })}</div>
-            <div className="t-display">{greeting}</div>
-          </div>
+        <div className="home">
+          {/* Masthead */}
+          <header className="home-masthead">
+            <Greeting name={USER_NAME} />
+            <Link href="/log" className="btn btn-primary btn-lg">
+              <Icon name="activity" size={17} /> Log workout
+            </Link>
+          </header>
 
-          {/* Week stats */}
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
-            <div className="card card-body" style={{ textAlign: 'center' }}>
-              <div style={{ fontSize: 30, fontWeight: 700, color: 'var(--accent)', lineHeight: 1 }}>
-                {weekSessions.length}
-              </div>
-              <div className="t-caption" style={{ marginTop: 4 }}>sessions this week</div>
-            </div>
-            <div className="card card-body" style={{ textAlign: 'center' }}>
-              <div style={{ fontSize: 30, fontWeight: 700, color: 'var(--energy)', lineHeight: 1 }}>
-                {weekVolume >= 1000 ? `${(weekVolume / 1000).toFixed(1)}k` : Math.round(weekVolume)}
-              </div>
-              <div className="t-caption" style={{ marginTop: 4 }}>lbs this week</div>
-            </div>
-          </div>
+          <div className="home-grid">
+            {/* ── Main column ── */}
+            <div className="home-main">
+              {/* Consistency hero */}
+              <section className="home-card home-streak">
+                <div className="streak-head">
+                  <div className="st-label">Consistency</div>
+                  <div className="cal-legend">
+                    <span>Less</span>
+                    {([0, 1, 2, 3] as const).map(l => <i key={l} style={{ background: calLevel(l) }} />)}
+                    <span>More</span>
+                  </div>
+                </div>
 
-          {/* Weekly muscle summary */}
-          {Object.keys(muscleSets).length > 0 && (
-            <div className="card">
-              <div className="card-header">
-                <span className="section-label">Weekly Muscle Volume</span>
-                <span className="t-caption">sets</span>
-              </div>
-              <div className="card-body">
-                <MuscleSummary sets={muscleSets} />
-              </div>
-            </div>
-          )}
+                <div className="streak-hero">
+                  <span className="streak-flame"><Icon name="flame" size={30} /></span>
+                  <span className="streak-num">{cs.current}</span>
+                  <span className="streak-unit">week<br />streak</span>
+                  <p className="streak-line">
+                    {hasHistory ? (
+                      cs.current > 0 ? (
+                        <>{cs.current} {cs.current === 1 ? 'week' : 'weeks'} straight — your longest run was <b>{cs.best} {cs.best === 1 ? 'week' : 'weeks'}</b>. Keep showing up.</>
+                      ) : (
+                        <>No active streak yet — your longest run was <b>{cs.best} {cs.best === 1 ? 'week' : 'weeks'}</b>. Train 3+ days this week to start one.</>
+                      )
+                    ) : (
+                      <>No sessions logged yet. <b>Log your first workout</b> to start building your streak.</>
+                    )}
+                  </p>
+                </div>
 
-          {/* Recent sessions */}
-          {recent.length > 0 ? (
-            <div>
-              <div className="section-head">
-                <span className="section-label">Recent Sessions</span>
-                <Link href="/log" style={{ fontSize: 13, color: 'var(--accent)', textDecoration: 'none' }}>
-                  All →
-                </Link>
-              </div>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-                {recent.map(s => (
-                  <SessionCard key={s.id} session={s} />
-                ))}
-              </div>
-            </div>
-          ) : (
-            <div className="empty-state">
-              <div className="icon">🏋️</div>
-              <div className="t-headline" style={{ marginBottom: 8 }}>No workouts yet</div>
-              <p className="t-body">Import your first Strong export to get started.</p>
-            </div>
-          )}
+                <ConsistencyHeatmap cols={cs.cols} />
 
-          {/* Quick actions */}
-          <div>
-            <div className="section-head"><span className="section-label">Quick Actions</span></div>
-            <div className="quick-tiles">
-              <Link href="/log" className="quick-tile accent">
-                <div className="tile-icon"><Icon name="log" size={20} /></div>
-                <div className="tile-label">Import</div>
-                <div className="tile-title">Log Workout</div>
-              </Link>
-              <Link href="/exercises" className="quick-tile">
-                <div className="tile-icon"><Icon name="exercises" size={20} /></div>
-                <div className="tile-label">Library</div>
-                <div className="tile-title">Exercises</div>
-              </Link>
-              <Link href="/routines" className="quick-tile">
-                <div className="tile-icon"><Icon name="routines" size={20} /></div>
-                <div className="tile-label">Plans</div>
-                <div className="tile-title">Routines</div>
-              </Link>
-              <Link href="/progress" className="quick-tile energy">
-                <div className="tile-icon"><Icon name="progress" size={20} /></div>
-                <div className="tile-label">Charts</div>
-                <div className="tile-title">Progress</div>
-              </Link>
+                <div className="streak-stats">
+                  <div className="hstat">
+                    <span className="hstat-val">{cs.best}<small>wks</small></span>
+                    <span className="hstat-lbl">Best streak</span>
+                  </div>
+                  <div className="hstat">
+                    <span className="hstat-val">{cs.thisMonth}</span>
+                    <span className="hstat-lbl">This month</span>
+                  </div>
+                  <div className="hstat">
+                    <span className="hstat-val">{cs.weeklyAvg}</span>
+                    <span className="hstat-lbl">Weekly avg</span>
+                  </div>
+                  <div className="hstat">
+                    <span className="hstat-val">{cs.total}</span>
+                    <span className="hstat-lbl">Sessions logged</span>
+                  </div>
+                </div>
+              </section>
+
+              {/* Recent sessions */}
+              <section className="home-recent">
+                <div className="home-section-head">
+                  <div className="section-label">Recent sessions</div>
+                  <Link href="/log" className="home-all">All <Icon name="arrowR" size={14} /></Link>
+                </div>
+                {recent.length > 0 ? (
+                  <div className="home-recent-list">
+                    {recent.map(s => {
+                      const { mon, day } = dateParts(s.date)
+                      return (
+                        <Link className="home-session" key={s.id} href={`/log/${s.id}`}>
+                          <div className="hs-date">
+                            <span className="hs-mon">{mon}</span>
+                            <span className="hs-day">{day}</span>
+                          </div>
+                          <div className="hs-main">
+                            <div className="hs-name">{s.name}</div>
+                            <div className="hs-focus">
+                              <MuscleDots ids={s.topMuscles} />
+                              <span>{s.focus}</span>
+                            </div>
+                          </div>
+                          <div className="hs-metrics">
+                            <span className="hs-vol">{fmtK(s.totalVol)}<small>lbs</small></span>
+                            <span className="hs-sets">{s.totalSets} sets</span>
+                          </div>
+                        </Link>
+                      )
+                    })}
+                  </div>
+                ) : (
+                  <div className="home-session" style={{ justifyContent: 'center', color: 'var(--ink-3)', fontSize: 14 }}>
+                    No sessions yet — your logged workouts will appear here.
+                  </div>
+                )}
+              </section>
             </div>
+
+            {/* ── Rail ── */}
+            <aside className="home-rail">
+              {/* This week */}
+              <section className="home-card week-card">
+                <div className="st-label">This week</div>
+                <div className="week-stats">
+                  <div className="wk-stat">
+                    <span className="wk-val">{thisWeek.sessions}</span>
+                    <span className="wk-lbl">Sessions</span>
+                  </div>
+                  <div className="wk-stat">
+                    <span className="wk-val">{thisWeek.sets}</span>
+                    <span className="wk-lbl">Sets</span>
+                  </div>
+                  <div className="wk-stat">
+                    <span className="wk-val">{fmtK(thisWeek.volume)}</span>
+                    <span className="wk-lbl">Volume</span>
+                  </div>
+                </div>
+                <div className="week-goal">
+                  <div className="week-goal-bar">
+                    <div style={{ width: `${Math.min(100, (thisWeek.sessions / thisWeek.goal) * 100)}%` }} />
+                  </div>
+                  <span className="week-goal-txt">
+                    {toGo === 0
+                      ? <><b>Goal hit.</b> {thisWeek.sessions} of {thisWeek.goal} sessions.</>
+                      : <><b>{toGo} to go</b> — {thisWeek.sessions} of {thisWeek.goal} this week.</>}
+                  </span>
+                </div>
+              </section>
+
+              {/* Quick actions */}
+              <QuickActions />
+            </aside>
           </div>
         </div>
       </div>

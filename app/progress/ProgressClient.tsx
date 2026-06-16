@@ -123,7 +123,7 @@ export default function ProgressClient({ exercises }: { exercises: ExerciseMeta[
                 </div>
                 <div style={{ textAlign: 'right' }}>
                   <div style={{ fontWeight: 700, fontSize: 15 }}>{p.maxWeight} lb</div>
-                  <div className="t-caption">{Math.round(p.totalVolume).toLocaleString()} vol</div>
+                  <div className="t-caption">{Math.round(p.totalVolume).toLocaleString('en-US')} vol</div>
                 </div>
               </div>
             ))}

@@ -2,7 +2,7 @@ import { notFound } from 'next/navigation'
 import { prisma } from '@/lib/prisma'
 import { parseMuscles } from '@/lib/muscles'
 import { AppShell } from '@/components/AppShell'
-import { TopNav } from '@/components/TopNav'
+
 import { MuscleTag } from '@/components/MuscleTag'
 import { MuscleSummary } from '@/components/MuscleSummary'
 import Link from 'next/link'
@@ -46,16 +46,11 @@ export default async function SessionPage({ params }: { params: Promise<{ id: st
 
   return (
     <AppShell>
-      <TopNav
-        title={session.label}
-        left={
-          <Link href="/log" style={{ color: 'var(--accent)', display: 'flex', alignItems: 'center' }}>
-            <Icon name="arrow-left" size={20} />
-          </Link>
-        }
-      />
       <div className="page-content">
         <div className="page-inner">
+          <Link href="/log" className="back-btn">
+            <Icon name="arrow-left" size={16} /> Log
+          </Link>
           {/* Header */}
           <div className="card card-body">
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>

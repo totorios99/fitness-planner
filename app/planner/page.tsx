@@ -1,19 +1,23 @@
 import { prisma } from '@/lib/prisma'
 import { AppShell } from '@/components/AppShell'
-import { TopNav } from '@/components/TopNav'
+
 import PlannerClient from './PlannerClient'
 
 export const dynamic = 'force-dynamic'
 
-function getMondayOf(d: Date): Date {
+function getMondayIso(d: Date): string {
   const day = d.getDay()
   const diff = d.getDate() - day + (day === 0 ? -6 : 1)
-  return new Date(d.getFullYear(), d.getMonth(), diff)
+  const mon = new Date(d.getFullYear(), d.getMonth(), diff)
+  return [
+    mon.getFullYear(),
+    String(mon.getMonth() + 1).padStart(2, '0'),
+    String(mon.getDate()).padStart(2, '0'),
+  ].join('-')
 }
 
 export default async function PlannerPage() {
-  const monday = getMondayOf(new Date())
-  monday.setHours(0, 0, 0, 0)
+  const mondayIso = getMondayIso(new Date())
 
   const [routines, slots] = await Promise.all([
     prisma.routine.findMany({
@@ -24,21 +28,21 @@ export default async function PlannerPage() {
           include: {
             exercises: {
               orderBy: { orderIndex: 'asc' },
-              include: { exercise: { select: { name: true, primaryMuscles: true } } },
+              include: { exercise: { select: { name: true, primaryMuscles: true, secondaryMuscles: true } } },
             },
           },
         },
       },
     }),
     prisma.plannerSlot.findMany({
-      where: { weekStart: monday },
+      where: { weekStart: new Date(mondayIso) },
       include: {
         routineDay: {
           include: {
             routine: { select: { id: true, name: true } },
             exercises: {
               orderBy: { orderIndex: 'asc' },
-              include: { exercise: { select: { name: true, primaryMuscles: true } } },
+              include: { exercise: { select: { name: true, primaryMuscles: true, secondaryMuscles: true } } },
             },
           },
         },
@@ -48,14 +52,11 @@ export default async function PlannerPage() {
 
   return (
     <AppShell>
-      <TopNav title="Planner" />
-      <div className="page-content">
-        <PlannerClient
-          routines={JSON.parse(JSON.stringify(routines))}
-          initialSlots={JSON.parse(JSON.stringify(slots))}
-          initialWeekStart={monday.toISOString().split('T')[0]}
-        />
-      </div>
+      <PlannerClient
+        routines={JSON.parse(JSON.stringify(routines))}
+        initialSlots={JSON.parse(JSON.stringify(slots))}
+        initialWeekStart={mondayIso}
+      />
     </AppShell>
   )
 }

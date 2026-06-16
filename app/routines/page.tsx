@@ -1,7 +1,7 @@
 import { prisma } from '@/lib/prisma'
 import { AppShell } from '@/components/AppShell'
-import { TopNav } from '@/components/TopNav'
-import { parseMuscles, muscleLabel } from '@/lib/muscles'
+
+import { parseMuscles, muscleLabel, muscleVar } from '@/lib/muscles'
 import Link from 'next/link'
 import NewRoutineButton from './NewRoutineButton'
 
@@ -23,11 +23,14 @@ export default async function RoutinesPage() {
 
   return (
     <AppShell>
-      <TopNav title="Routines" />
+
       <div className="page-content">
-        <div className="page-inner">
-          <div className="section-head">
-            <span className="section-label">Your Routines</span>
+        <div className="page page-narrow">
+          <div className="page-head">
+            <div>
+              <div className="board-eyebrow">{routines.length} {routines.length === 1 ? 'routine' : 'routines'}</div>
+              <h1 className="board-title">Your <em>routines</em></h1>
+            </div>
             <NewRoutineButton />
           </div>
 
@@ -46,19 +49,20 @@ export default async function RoutinesPage() {
               return (
                 <Link key={routine.id} href={`/routines/${routine.id}`} style={{ textDecoration: 'none' }}>
                   <div className="routine-card">
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                      <div className="t-headline">{routine.name}</div>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 12 }}>
+                      <div style={{ fontFamily: 'var(--font-serif)', fontSize: 21, fontWeight: 500, letterSpacing: '-0.01em', color: 'var(--ink)', lineHeight: 1.15 }}>
+                        {routine.name}
+                      </div>
                       <span className="routine-badge">{routine.daysPerWeek}d / wk</span>
                     </div>
                     {routine.description && (
-                      <div className="t-body t-ink-3" style={{ fontSize: 13 }}>{routine.description}</div>
+                      <div className="t-caption">{routine.description}</div>
                     )}
-                    <div style={{ display: 'flex', gap: 16, marginTop: 4 }}>
-                      <div className="t-caption">{routine.days.length} days · {totalExs} exercises</div>
-                    </div>
-                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4, marginTop: 4 }}>
+                    <div className="t-caption">{routine.days.length} days · {totalExs} exercises</div>
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10, marginTop: 2 }}>
                       {[...allMuscles].slice(0, 6).map(m => (
-                        <span key={m} style={{ fontSize: 11, color: 'var(--ink-3)', background: 'var(--bg-sunken)', padding: '2px 6px', borderRadius: 9999 }}>
+                        <span key={m} style={{ display: 'inline-flex', alignItems: 'center', gap: 5, fontSize: 11, color: 'var(--ink-3)' }}>
+                          <span className="muscle-dot" style={{ background: `var(${muscleVar(m)})`, width: 7, height: 7 }} />
                           {muscleLabel(m)}
                         </span>
                       ))}
@@ -73,7 +77,7 @@ export default async function RoutinesPage() {
             <div className="empty-state">
               <div className="icon">📅</div>
               <div className="t-headline" style={{ marginBottom: 8 }}>No routines yet</div>
-              <p className="t-body">Run the seed script to add predefined routines.</p>
+              <p className="t-body">Create your first routine to start planning your week.</p>
             </div>
           )}
         </div>

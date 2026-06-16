@@ -1,4 +1,4 @@
-import { muscleColor, muscleBg, muscleLabel } from '@/lib/muscles'
+import { muscleVar, muscleLabel } from '@/lib/muscles'
 
 export function MuscleTag({
   muscle,
@@ -9,6 +9,7 @@ export function MuscleTag({
   secondary?: boolean
   size?: 'sm' | 'xs'
 }) {
+  const cssVar = muscleVar(muscle)
   return (
     <span
       style={{
@@ -19,8 +20,8 @@ export function MuscleTag({
         fontSize: size === 'xs' ? 10 : 11,
         fontWeight: 600,
         whiteSpace: 'nowrap',
-        color: muscleColor(muscle),
-        background: muscleBg(muscle),
+        color: `var(${cssVar})`,
+        background: `color-mix(in oklab, var(${cssVar}) 12%, transparent)`,
         opacity: secondary ? 0.7 : 1,
       }}
     >

@@ -1,7 +1,7 @@
 import { notFound } from 'next/navigation'
 import { prisma } from '@/lib/prisma'
 import { AppShell } from '@/components/AppShell'
-import { TopNav } from '@/components/TopNav'
+
 import { RoutineEditor } from './RoutineEditor'
 import DeleteRoutineButton from './DeleteRoutineButton'
 import Link from 'next/link'
@@ -34,40 +34,36 @@ export default async function RoutineDetailPage({ params }: { params: Promise<{ 
 
   return (
     <AppShell>
-      <TopNav
-        title={routine.name}
-        left={
-          <Link href="/routines" style={{ color: 'var(--accent)', display: 'flex', alignItems: 'center' }}>
-            <Icon name="arrow-left" size={20} />
-          </Link>
-        }
-      />
       <div className="page-content">
-        <div className="page-inner">
+        <div className="page page-narrow">
+          <Link href="/routines" className="back-btn">
+            <Icon name="arrow-left" size={16} /> Routines
+          </Link>
+
           {/* Header */}
-          <div className="card card-body">
-            <div className="t-headline">{routine.name}</div>
-            {routine.description && (
-              <div className="t-body t-ink-3" style={{ marginTop: 6, fontSize: 14 }}>{routine.description}</div>
-            )}
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', marginTop: 12 }}>
-              <div style={{ display: 'flex', gap: 24 }}>
-                <div>
-                  <div style={{ fontSize: 22, fontWeight: 700, color: 'var(--accent)' }}>{routine.daysPerWeek}</div>
-                  <div className="t-caption">days / week</div>
-                </div>
-                <div>
-                  <div style={{ fontSize: 22, fontWeight: 700 }}>{routine.days.length}</div>
-                  <div className="t-caption">sessions</div>
-                </div>
-                <div>
-                  <div style={{ fontSize: 22, fontWeight: 700 }}>
-                    {routine.days.reduce((s, d) => s + d.exercises.length, 0)}
-                  </div>
-                  <div className="t-caption">total exercises</div>
-                </div>
-              </div>
-              <DeleteRoutineButton id={routine.id} />
+          <div className="page-head">
+            <div>
+              <div className="board-eyebrow">Routine</div>
+              <h1 className="board-title">{routine.name}</h1>
+              {routine.description && (
+                <div className="t-caption" style={{ marginTop: 6 }}>{routine.description}</div>
+              )}
+            </div>
+            <DeleteRoutineButton id={routine.id} />
+          </div>
+
+          <div className="stat-tiles">
+            <div className="stat-tile">
+              <span className="st-label">Per week</span>
+              <span className="st-val num" style={{ color: 'var(--accent)' }}>{routine.daysPerWeek}<small>days</small></span>
+            </div>
+            <div className="stat-tile">
+              <span className="st-label">Sessions</span>
+              <span className="st-val num">{routine.days.length}</span>
+            </div>
+            <div className="stat-tile">
+              <span className="st-label">Exercises</span>
+              <span className="st-val num">{routine.days.reduce((s, d) => s + d.exercises.length, 0)}</span>
             </div>
           </div>
 

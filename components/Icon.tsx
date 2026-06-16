@@ -3,6 +3,8 @@ type IconName =
   | 'sun' | 'moon' | 'chevron' | 'check' | 'x'
   | 'upload' | 'trending' | 'calendar' | 'dumbbell' | 'chart'
   | 'plus' | 'filter' | 'search' | 'image' | 'arrow-left'
+  | 'left' | 'right' | 'grip' | 'bolt' | 'chevronR'
+  | 'activity' | 'layers' | 'trash' | 'flame' | 'arrowR'
 
 const paths: Record<IconName, React.ReactNode> = {
   home: (
@@ -64,6 +66,15 @@ const paths: Record<IconName, React.ReactNode> = {
     <>
       <line x1="18" y1="6" x2="6" y2="18" />
       <line x1="6" y1="6" x2="18" y2="18" />
+    </>
+  ),
+  trash: (
+    <>
+      <polyline points="3 6 5 6 21 6" />
+      <path d="M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6" />
+      <path d="M10 11v6" />
+      <path d="M14 11v6" />
+      <path d="M8 6V4a2 2 0 012-2h4a2 2 0 012 2v2" />
     </>
   ),
   upload: (
@@ -135,6 +146,37 @@ const paths: Record<IconName, React.ReactNode> = {
     <>
       <line x1="19" y1="12" x2="5" y2="12" />
       <polyline points="12 19 5 12 12 5" />
+    </>
+  ),
+  left: <polyline points="15 18 9 12 15 6" />,
+  right: <polyline points="9 18 15 12 9 6" />,
+  chevronR: <polyline points="9 6 15 12 9 18" />,
+  arrowR: (
+    <>
+      <line x1="5" y1="12" x2="19" y2="12" />
+      <polyline points="12 5 19 12 12 19" />
+    </>
+  ),
+  flame: (
+    <path d="M12 2c1 3.5-1.5 5-2.5 6.5C8 11 9 13 12 13s4-2 2.5-4.5C18 10 19 13.5 17 17a5 5 0 01-10 0c0-3 2-4.5 2.5-7 .3 1.2 1 2 2.5 2.5C14 7 13 4 12 2z" />
+  ),
+  grip: (
+    <>
+      <circle cx="9" cy="6" r="1.4" fill="currentColor" stroke="none" />
+      <circle cx="9" cy="12" r="1.4" fill="currentColor" stroke="none" />
+      <circle cx="9" cy="18" r="1.4" fill="currentColor" stroke="none" />
+      <circle cx="15" cy="6" r="1.4" fill="currentColor" stroke="none" />
+      <circle cx="15" cy="12" r="1.4" fill="currentColor" stroke="none" />
+      <circle cx="15" cy="18" r="1.4" fill="currentColor" stroke="none" />
+    </>
+  ),
+  bolt: <polygon points="13 2 4.5 13.5 11 13.5 10 22 19.5 10 13 10 13 2" />,
+  activity: <polyline points="22 12 18 12 15 21 9 3 6 12 2 12" />,
+  layers: (
+    <>
+      <polygon points="12 2 2 7 12 12 22 7 12 2" />
+      <polyline points="2 12 12 17 22 12" />
+      <polyline points="2 17 12 22 22 17" />
     </>
   ),
 }
