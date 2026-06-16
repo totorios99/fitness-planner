@@ -47,9 +47,6 @@ export default async function Home() {
           {/* Masthead */}
           <header className="home-masthead">
             <Greeting name={USER_NAME} />
-            <Link href="/log" className="btn btn-primary btn-lg">
-              <Icon name="activity" size={17} /> Log workout
-            </Link>
           </header>
 
           <div className="home-grid">
