@@ -16,7 +16,7 @@ const ACTIONS: Action[] = [
   { icon: 'activity', title: 'Log workout',       sub: "Track today's sets", href: '/log', featured: true },
   { icon: 'layers',   title: 'Exercise library',  sub: 'Browse movements',   href: '/exercises' },
   { icon: 'calendar', title: 'Plans & routines',  sub: 'Build your week',     href: '/planner' },
-  { icon: 'chart',    title: 'Progress & charts', sub: 'Coming soon',         disabled: true },
+  { icon: 'routines', title: 'Routines',          sub: 'Build & edit',       href: '/routines' },
 ]
 
 function Row({ a }: { a: Action }) {

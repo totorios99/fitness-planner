@@ -21,8 +21,11 @@ type RDay = {
 type Routine = {
   id: string
   name: string
+  type: 'lifting' | 'mobility'
   days: RDay[]
 }
+
+type Scheduled = { type: 'lifting' | 'mobility'; dayId: string; done: boolean }
 
 type SetEntry = {
   weightLb: string
@@ -62,13 +65,26 @@ function getDayLabel(dayId: string, routines: Routine[]): string {
   return 'Manual Session'
 }
 
+function getDayType(dayId: string | null, routines: Routine[]): 'lifting' | 'mobility' {
+  if (!dayId) return 'lifting'
+  for (const r of routines) {
+    if (r.days.some(d => d.id === dayId)) return r.type
+  }
+  return 'lifting'
+}
+
+const DONE_MSG: Record<'lifting' | 'mobility', string> = {
+  lifting: 'Lifting session already logged today — strong work. 💪',
+  mobility: 'Mobility session already logged today — nicely done. 🧘',
+}
+
 export default function LogClient({
   routines,
-  todayDayId,
+  scheduled,
   dateStr,
 }: {
   routines: Routine[]
-  todayDayId: string | null
+  scheduled: Scheduled[]
   dateStr: string
 }) {
   const router = useRouter()
@@ -78,11 +94,14 @@ export default function LogClient({
   const [importDrag, setImportDrag] = useState(false)
   const [importError, setImportError] = useState('')
 
-  // Only auto-load a workout when one is actually scheduled for today.
-  const scheduled = todayDayId != null
-  const [activeDayId, setActiveDayId] = useState<string | null>(todayDayId)
+  // Scheduled slots already logged today → show a motivational note, don't auto-load (no dupes).
+  const doneScheduled = scheduled.filter(s => s.done)
+  const pending = scheduled.filter(s => !s.done)
+  const isScheduled = pending.length > 0
+  const initialDayId = pending[0]?.dayId ?? null
+  const [activeDayId, setActiveDayId] = useState<string | null>(initialDayId)
   const [exercises, setExercises] = useState<ActiveExercise[]>(() =>
-    todayDayId ? buildExercises(todayDayId, routines) : []
+    initialDayId ? buildExercises(initialDayId, routines) : []
   )
   const [saving, setSaving] = useState(false)
   const [toast, setToast] = useState('')
@@ -132,10 +151,11 @@ export default function LogClient({
     setSaving(true)
     try {
       const label = activeDayId ? getDayLabel(activeDayId, routines) : 'Manual Session'
+      const type = getDayType(activeDayId, routines)
       const res = await fetch('/api/sessions', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ label, exercises: exsToSave }),
+        body: JSON.stringify({ label, type, exercises: exsToSave }),
       })
       const data = await res.json()
       if (!res.ok) throw new Error(data.error)
@@ -204,12 +224,19 @@ export default function LogClient({
       </label>
       {importError && <div style={{ color: 'var(--danger)', fontSize: 13, marginTop: -10, marginBottom: 10 }}>{importError}</div>}
 
+      {/* Already-logged scheduled sessions — motivational note, no duplicate prompt */}
+      {doneScheduled.map(s => (
+        <div key={s.type} className="log-done-note">
+          <Icon name="check" size={16} /> {DONE_MSG[s.type]}
+        </div>
+      ))}
+
       {/* Active session logger */}
       {routines.length > 0 ? (
         <div className="log-card">
           <div className="log-card-head">
             <div className="log-pick">
-              <span className="log-eyebrow">{scheduled ? 'Today’s workout' : 'Today'}</span>
+              <span className="log-eyebrow">{isScheduled ? 'Today’s workout' : 'Today'}</span>
               <select
                 className="log-select"
                 value={activeDayId ?? ''}

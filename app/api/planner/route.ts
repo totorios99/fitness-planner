@@ -27,11 +27,12 @@ export async function GET(req: NextRequest) {
 }
 
 export async function POST(req: NextRequest) {
-  const { weekStart, dayOfWeek, routineDayId } = await req.json()
+  const { weekStart, dayOfWeek, routineDayId, type } = await req.json()
+  const slotType = type === 'mobility' ? 'mobility' : 'lifting'
 
   const slot = await prisma.plannerSlot.upsert({
-    where: { weekStart_dayOfWeek: { weekStart: new Date(weekStart), dayOfWeek } },
-    create: { weekStart: new Date(weekStart), dayOfWeek, routineDayId },
+    where: { weekStart_dayOfWeek_type: { weekStart: new Date(weekStart), dayOfWeek, type: slotType } },
+    create: { weekStart: new Date(weekStart), dayOfWeek, type: slotType, routineDayId },
     update: { routineDayId },
     include: {
       routineDay: {

@@ -63,19 +63,11 @@ export default function ExerciseProgressWidget({
 }) {
   const [metric, setMetric] = useState<'maxWeight' | 'totalVolume'>('maxWeight')
   const [chartPage, setChartPage] = useState(0)
-  const [slideDir, setSlideDir] = useState<'prev' | 'next' | 'up'>('up')
   const [tablePage, setTablePage] = useState(0)
 
   function changeMetric(m: 'maxWeight' | 'totalVolume') {
-    setSlideDir('up')
     setMetric(m)
     setChartPage(0)
-  }
-
-  function changeChartPage(newPage: number) {
-    // higher page index = older data = scrolling left in time
-    setSlideDir(newPage > chartPage ? 'prev' : 'next')
-    setChartPage(newPage)
   }
 
   if (points.length === 0) {
@@ -96,9 +88,11 @@ export default function ExerciseProgressWidget({
   const volChange = firstVol > 0 ? Math.round(((lastVol - firstVol) / firstVol) * 100) : 0
 
   const chartPages = Math.ceil(points.length / PAGE)
-  const chartEnd   = points.length - chartPage * PAGE
-  const chartStart = Math.max(0, chartEnd - PAGE)
-  const chartSlice = points.slice(chartStart, chartEnd)
+  // One panel per page (page 0 = newest), laid out side-by-side for the carousel track.
+  const chartPanels = Array.from({ length: chartPages }, (_, p) => {
+    const end = points.length - p * PAGE
+    return points.slice(Math.max(0, end - PAGE), end)
+  })
 
   const reversed   = [...points].reverse()
   const tablePages = Math.ceil(reversed.length / PAGE)
@@ -154,21 +148,27 @@ export default function ExerciseProgressWidget({
             </button>
           </div>
         </div>
-        <div key={`${metric}-${chartPage}`} className="chart-anim-wrap" data-dir={slideDir}>
-          <LineChart
-            data={chartSlice.map(p => ({
-              label: p.label,
-              value: metric === 'maxWeight' ? p.maxWeight : p.totalVolume,
-            }))}
-            color={chartColor}
-            height={208}
-            formatValue={metric === 'maxWeight'
-              ? (v) => `${v.toLocaleString('en-US')} lb`
-              : (v) => `${(v / 1000).toFixed(1)}k`
-            }
-          />
+        <div className="chart-carousel">
+          <div className="chart-track" style={{ transform: `translateX(-${chartPage * 100}%)` }}>
+            {chartPanels.map((slice, p) => (
+              <div className="chart-panel" key={p}>
+                <LineChart
+                  data={slice.map(pt => ({
+                    label: pt.label,
+                    value: metric === 'maxWeight' ? pt.maxWeight : pt.totalVolume,
+                  }))}
+                  color={chartColor}
+                  height={208}
+                  formatValue={metric === 'maxWeight'
+                    ? (v) => `${v.toLocaleString('en-US')} lb`
+                    : (v) => `${(v / 1000).toFixed(1)}k`
+                  }
+                />
+              </div>
+            ))}
+          </div>
         </div>
-        <Pager page={chartPage} total={chartPages} onChange={changeChartPage} />
+        <Pager page={chartPage} total={chartPages} onChange={setChartPage} />
       </div>
 
       {/* Session history */}

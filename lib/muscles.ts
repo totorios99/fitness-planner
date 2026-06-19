@@ -1,7 +1,7 @@
 export type MuscleKey =
   | 'chest' | 'back' | 'lats' | 'traps'
   | 'shoulders' | 'triceps' | 'biceps' | 'forearms'
-  | 'quads' | 'hamstrings' | 'glutes' | 'calves' | 'core'
+  | 'quads' | 'hamstrings' | 'glutes' | 'calves' | 'adductors' | 'abductors' | 'core'
 
 export const MUSCLES: Record<MuscleKey, { label: string; hue: number }> = {
   chest:      { label: 'Chest',       hue: 0   },
@@ -16,6 +16,8 @@ export const MUSCLES: Record<MuscleKey, { label: string; hue: number }> = {
   hamstrings: { label: 'Hamstrings',  hue: 30  },
   glutes:     { label: 'Glutes',      hue: 330 },
   calves:     { label: 'Calves',      hue: 35  },
+  adductors:  { label: 'Adductors',   hue: 300 },
+  abductors:  { label: 'Abductors',   hue: 285 },
   core:       { label: 'Core',        hue: 220 },
 }
 
@@ -32,6 +34,8 @@ const MUSCLE_VAR_MAP: Record<string, string> = {
   hamstrings: '--m-legs',
   glutes:     '--m-legs',
   calves:     '--m-legs',
+  adductors:  '--m-legs',
+  abductors:  '--m-legs',
   core:       '--m-core',
 }
 
@@ -63,4 +67,10 @@ export function muscleLabel(key: string): string {
 
 export function parseMuscles(json: string): MuscleKey[] {
   try { return JSON.parse(json) } catch { return [] }
+}
+
+// Unilateral exercises are logged one set per side, so a set count of N is really N/2
+// effective sets per muscle. Bilateral exercises count their sets as-is.
+export function effectiveSets(count: number, unilateral: boolean): number {
+  return unilateral ? Math.ceil(count / 2) : count
 }

@@ -11,6 +11,7 @@ export default function NewRoutineButton() {
   const [open, setOpen] = useState(false)
   const [name, setName] = useState('')
   const [description, setDescription] = useState('')
+  const [type, setType] = useState<'lifting' | 'mobility'>('lifting')
   const [dayCount, setDayCount] = useState(3)
   const [dayLabels, setDayLabels] = useState(DEFAULT_DAY_LABELS.slice(0, 3))
   const [saving, setSaving] = useState(false)
@@ -27,6 +28,9 @@ export default function NewRoutineButton() {
 
   async function handleCreate() {
     if (!name.trim()) { setError('Name required'); return }
+    if (type === 'lifting' && dayLabels.length < 2) {
+      setError('Lifting routines need at least 2 days'); return
+    }
     setError('')
     setSaving(true)
     try {
@@ -36,6 +40,7 @@ export default function NewRoutineButton() {
         body: JSON.stringify({
           name: name.trim(),
           description: description.trim() || undefined,
+          type,
           days: dayLabels.map(l => ({ label: l })),
         }),
       })
@@ -48,10 +53,17 @@ export default function NewRoutineButton() {
     }
   }
 
+  function handleType(t: 'lifting' | 'mobility') {
+    setType(t)
+    // Lifting requires ≥2 days; bump up if the user had a 1-day mobility selection.
+    if (t === 'lifting' && dayCount < 2) handleDayCount(2)
+  }
+
   function handleClose() {
     setOpen(false)
     setName('')
     setDescription('')
+    setType('lifting')
     setDayCount(3)
     setDayLabels(DEFAULT_DAY_LABELS.slice(0, 3))
     setError('')
@@ -93,9 +105,25 @@ export default function NewRoutineButton() {
               </div>
 
               <div className="field">
+                <span>Type</span>
+                <div className="segmented" style={{ width: 'fit-content' }}>
+                  {(['lifting', 'mobility'] as const).map(t => (
+                    <button
+                      key={t}
+                      className={`seg-btn${type === t ? ' active' : ''}`}
+                      onClick={() => handleType(t)}
+                      style={{ flex: 'none', minWidth: 80, textTransform: 'capitalize' }}
+                    >
+                      {t}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <div className="field">
                 <span>Days per week</span>
                 <div className="segmented" style={{ width: 'fit-content' }}>
-                  {[2, 3, 4, 5, 6].map(n => (
+                  {(type === 'mobility' ? [1, 2, 3, 4, 5, 6] : [2, 3, 4, 5, 6]).map(n => (
                     <button
                       key={n}
                       className={`seg-btn${dayCount === n ? ' active' : ''}`}
