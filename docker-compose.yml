@@ -11,6 +11,8 @@ services:
       - /DATA/AppData/forma:/data
     environment:
       - DATABASE_URL=file:/data/forma.db
+      # Local timezone — controls how dates are formatted/grouped server-side.
+      - TZ=America/Chicago
     restart: unless-stopped
     networks:
       - forma_net

@@ -15,10 +15,14 @@ RUN npx prisma generate
 RUN npm run build
 
 FROM base AS runner
-RUN apk add --no-cache openssl
+# tzdata so Node can resolve named zones (TZ); without it Alpine falls back to UTC.
+RUN apk add --no-cache openssl tzdata
 WORKDIR /app
 ENV NODE_ENV=production
 ENV PORT=3000
+# Default timezone — change to your zone (e.g. America/Mexico_City, Europe/Madrid).
+# Overridable via the TZ env in docker-compose.yml.
+ENV TZ=America/Chicago
 
 RUN addgroup --system --gid 1001 nodejs
 RUN adduser --system --uid 1001 nextjs
