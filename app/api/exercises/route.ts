@@ -23,9 +23,9 @@ export async function GET(req: NextRequest) {
 
 export async function POST(req: NextRequest) {
   const body = await req.json()
-  const { name, category, equipment, primaryMuscles, secondaryMuscles } = body as {
-    name: string; category: string; equipment: string
-    primaryMuscles?: string[]; secondaryMuscles?: string[]
+  const { name, type, category, equipment, primaryMuscles, secondaryMuscles, unilateral } = body as {
+    name: string; type?: string; category: string; equipment: string
+    primaryMuscles?: string[]; secondaryMuscles?: string[]; unilateral?: boolean
   }
 
   if (!name?.trim()) return Response.json({ error: 'Name required' }, { status: 400 })
@@ -35,13 +35,17 @@ export async function POST(req: NextRequest) {
     .replace(/[^a-z0-9]+/g, '-')
     .replace(/^-|-$/g, '')
 
-  const primary = Array.isArray(primaryMuscles) ? primaryMuscles : []
-  const secondary = Array.isArray(secondaryMuscles) ? secondaryMuscles.filter(m => !primary.includes(m)) : []
+  const exType = type === 'mobility' ? 'mobility' : 'lifting'
+  // Mobility movements have no muscle targeting — store only their group (in category).
+  const primary = exType === 'lifting' && Array.isArray(primaryMuscles) ? primaryMuscles : []
+  const secondary = exType === 'lifting' && Array.isArray(secondaryMuscles) ? secondaryMuscles.filter(m => !primary.includes(m)) : []
 
   const exercise = await prisma.exercise.create({
     data: {
       name: name.trim(),
       slug,
+      type: exType,
+      unilateral: !!unilateral,
       category: category ?? 'other',
       equipment: equipment ?? 'other',
       primaryMuscles: JSON.stringify(primary),

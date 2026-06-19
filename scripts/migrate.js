@@ -8,6 +8,9 @@ if (dbUrl && dbUrl.startsWith('file:')) {
   mkdirSync(dirname(dbPath), { recursive: true })
 }
 
+// Call the Prisma CLI directly (no npx — the .bin symlink isn't in the slim
+// runtime image, and there's no network to fetch it).
+const prismaCli = require.resolve('prisma/build/index.js')
 console.log('Running Prisma db push...')
-execSync('npx prisma db push --skip-generate', { stdio: 'inherit' })
+execSync(`node "${prismaCli}" db push`, { stdio: 'inherit' })
 console.log('Database ready.')

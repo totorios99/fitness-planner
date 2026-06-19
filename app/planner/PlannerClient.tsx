@@ -22,19 +22,21 @@ const MUSCLE_MAP = Object.fromEntries(MUSCLES.map(m => [m.id, m]))
 // ── Types matching Prisma / API shape ──
 interface MuscleMeta { id: string; color: string; label: string; target: number }
 
+type SlotType = 'lifting' | 'mobility'
+
 interface ExerciseMin { name: string; primaryMuscles: string; secondaryMuscles: string }
 interface RoutineExMin { exercise: ExerciseMin }
 interface RoutineDayFull {
   id: string; label: string; dayIndex: number
-  routine: { id: string; name: string }
+  routine: { id: string; name: string; type: SlotType }
   exercises: RoutineExMin[]
 }
 interface SlotData {
-  id: string; dayOfWeek: number
+  id: string; dayOfWeek: number; type: SlotType
   routineDay: RoutineDayFull | null
 }
 interface RoutineData {
-  id: string; name: string; daysPerWeek: number
+  id: string; name: string; type: SlotType; daysPerWeek: number
   days: RoutineDayFull[]
 }
 
@@ -215,10 +217,10 @@ function MPill({ muscleId }: { muscleId: string }) {
 
 // ── Day column ──
 function DayCol({
-  dayKey, date, slot, today, armed, hover,
+  dayKey, date, slots, today, armed, hover,
   onPlace, onRemove, onToggleRest, onSessionDown, onPick,
 }: {
-  dayKey: string; date: Date; slot: SlotData | null; today: boolean
+  dayKey: string; date: Date; slots: SlotData[]; today: boolean
   armed: ArmedState | null; hover: boolean
   onPlace: (key: string) => void
   onRemove: (slotId: string) => void
@@ -226,19 +228,15 @@ function DayCol({
   onSessionDown: (e: React.PointerEvent, payload: DragPayload, node: HTMLElement) => void
   onPick: (key: string) => void
 }) {
-  const hasSession = !!slot?.routineDay
-  const isRest = slot ? !slot.routineDay && slot.id.startsWith('rest-') : false
-  const armedHint = !!armed && !isRest
+  const sessions = slots.filter(s => s.routineDay)
+  const hasSession = sessions.length > 0
+  // A day already holding both a lifting and a mobility session is full (max 2).
+  const full = sessions.some(s => s.type === 'lifting') && sessions.some(s => s.type === 'mobility')
 
   const cls = ['day']
   if (today) cls.push('today')
-  if (isRest) cls.push('rest')
   if (hover) cls.push('drop-target')
-  else if (armedHint) cls.push('armed-hint')
-
-  const day = slot?.routineDay
-  const muscles = day ? [...new Set(day.exercises.flatMap(e => parseMuscles(e.exercise.primaryMuscles)))] : []
-  const topMuscles = muscles.slice(0, 3)
+  else if (armed) cls.push('armed-hint')
 
   return (
     <div className={cls.join(' ')} data-daykey={dayKey} onClick={() => { if (armed) onPlace(dayKey) }}>
@@ -248,63 +246,62 @@ function DayCol({
           <div className="day-date">{date.getDate()}</div>
         </div>
         <div className="day-head-actions">
-          <button
-            className={`day-mini-btn${isRest ? ' active' : ''}`}
-            title={isRest ? 'Mark as training day' : 'Mark as rest day'}
-            onClick={e => { e.stopPropagation(); onToggleRest(dayKey) }}
-          >
-            <Icon name="moon" size={14} />
-          </button>
+          {hasSession && (
+            <button
+              className="day-mini-btn"
+              title="Clear day"
+              onClick={e => { e.stopPropagation(); onToggleRest(dayKey) }}
+            >
+              <Icon name="moon" size={14} />
+            </button>
+          )}
         </div>
       </div>
       <div className="day-body">
-        {isRest ? (
-          <div className="rest-label">
-            <span className="rest-title">Rest</span>
-            <span className="rest-sub">Recovery day</span>
-          </div>
-        ) : (
-          <>
-            {hasSession && day && (
-              <div
-                className="session"
-                onPointerDown={e => {
-                  if (!slot) return
-                  onSessionDown(e, { kind: 'move', slotId: slot.id, dayKey, routineDay: day }, e.currentTarget)
-                }}
-                onClick={e => { if (armed) { e.stopPropagation(); onPlace(dayKey) } }}
-              >
-                <div className="session-top">
-                  <div>
-                    <div className="session-name">{day.label}</div>
-                    <div className="session-focus">{day.routine.name}</div>
-                  </div>
-                  <button
-                    className="session-remove"
-                    onPointerDown={e => e.stopPropagation()}
-                    onClick={e => { e.stopPropagation(); if (slot) onRemove(slot.id) }}
-                  >
-                    <Icon name="x" size={14} />
-                  </button>
+        {sessions.map(slot => {
+          const day = slot.routineDay!
+          const topMuscles = [...new Set(day.exercises.flatMap(e => parseMuscles(e.exercise.primaryMuscles)))].slice(0, 3)
+          return (
+            <div
+              key={slot.id}
+              className={`session session-${slot.type}`}
+              onPointerDown={e => onSessionDown(e, { kind: 'move', slotId: slot.id, dayKey, routineDay: day }, e.currentTarget)}
+              onClick={e => { if (armed) { e.stopPropagation(); onPlace(dayKey) } }}
+            >
+              <div className="session-top">
+                <div>
+                  <div className="session-name">{day.label}</div>
+                  <div className="session-focus">{day.routine.name} · {slot.type}</div>
                 </div>
+                <button
+                  className="session-remove"
+                  onPointerDown={e => e.stopPropagation()}
+                  onClick={e => { e.stopPropagation(); onRemove(slot.id) }}
+                >
+                  <Icon name="x" size={14} />
+                </button>
+              </div>
+              {slot.type === 'lifting' && (
                 <div className="session-musc">
                   {topMuscles.map(id => <MPill key={id} muscleId={id} />)}
                 </div>
-                <div className="session-meta">
-                  <span><b>{day.exercises.length}</b> ex</span>
-                  <span className="dot-sep" />
-                  <span>~{day.exercises.length * 3} sets</span>
-                </div>
+              )}
+              <div className="session-meta">
+                <span><b>{day.exercises.length}</b> ex</span>
+                <span className="dot-sep" />
+                <span>~{day.exercises.length * 3} sets</span>
               </div>
-            )}
-            <button
-              className="add-slot"
-              onClick={e => { e.stopPropagation(); if (armed) onPlace(dayKey); else onPick(dayKey) }}
-            >
-              <Icon name="plus" size={15} />
-              {armed ? 'Place here' : hasSession ? 'Add' : 'Add workout'}
-            </button>
-          </>
+            </div>
+          )
+        })}
+        {!full && (
+          <button
+            className="add-slot"
+            onClick={e => { e.stopPropagation(); if (armed) onPlace(dayKey); else onPick(dayKey) }}
+          >
+            <Icon name="plus" size={15} />
+            {armed ? 'Place here' : hasSession ? 'Add' : 'Add workout'}
+          </button>
         )}
       </div>
     </div>
@@ -327,7 +324,7 @@ function Library({
   const [tab, setTab] = useState<'routines' | 'days'>('routines')
   const [expanded, setExpanded] = useState<string | null>(null)
 
-  const allDays = routines.flatMap(r => r.days.map(d => ({ ...d, routine: { id: r.id, name: r.name } })))
+  const allDays = routines.flatMap(r => r.days.map(d => ({ ...d, routine: { id: r.id, name: r.name, type: r.type } })))
 
   return (
     <aside className={`rail${open ? ' open' : ''}`}>
@@ -399,7 +396,7 @@ function RoutineCard({ routine, expanded, onToggle, onAdd, onChipDown, armed }: 
       </div>
       {expanded && (
         <div className="routine-days-list">
-          {routine.days.map(d => <DayChip key={d.id} day={{ ...d, routine: { id: routine.id, name: routine.name } }} onChipDown={onChipDown} armed={armed} />)}
+          {routine.days.map(d => <DayChip key={d.id} day={{ ...d, routine: { id: routine.id, name: routine.name, type: routine.type } }} onChipDown={onChipDown} armed={armed} />)}
         </div>
       )}
     </div>
@@ -407,7 +404,7 @@ function RoutineCard({ routine, expanded, onToggle, onAdd, onChipDown, armed }: 
 }
 
 function DayChip({ day, onChipDown, armed }: {
-  day: RoutineDayFull & { routine: { id: string; name: string } }
+  day: RoutineDayFull & { routine: { id: string; name: string; type: SlotType } }
   onChipDown: (e: React.PointerEvent, payload: DragPayload, node: HTMLElement) => void
   armed: ArmedState | null
 }) {
@@ -450,17 +447,24 @@ function Toast({ msg, onUndo }: { msg: string; onUndo?: () => void }) {
 }
 
 // ── Main PlannerClient ──
+interface TemplateSlotData {
+  dayOfWeek: number; type: SlotType; routineDayId: string | null
+}
+
 export default function PlannerClient({
   routines,
   initialSlots,
+  initialTemplate,
   initialWeekStart,
 }: {
   routines: RoutineData[]
   initialSlots: SlotData[]
+  initialTemplate: TemplateSlotData[]
   initialWeekStart: string
 }) {
   const [weekStart, setWeekStart] = useState(initialWeekStart)
   const [slots, setSlots] = useState<SlotData[]>(initialSlots)
+  const [hasDefault, setHasDefault] = useState(initialTemplate.length > 0)
   const [railOpen, setRailOpen] = useState(false)
   const [pickFor, setPickFor] = useState<string | null>(null)
   const [armed, setArmed] = useState<ArmedState | null>(null)
@@ -502,14 +506,15 @@ export default function PlannerClient({
     loadWeek(next)
   }
 
-  async function assignSlot(dayOfWeek: number, routineDayId: string) {
+  async function assignSlot(dayOfWeek: number, routineDayId: string, type: SlotType) {
     const res = await fetch('/api/planner', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ weekStart, dayOfWeek, routineDayId }),
+      body: JSON.stringify({ weekStart, dayOfWeek, routineDayId, type }),
     })
     const slot: SlotData = await res.json()
-    setSlots(prev => [...prev.filter(s => s.dayOfWeek !== dayOfWeek), slot])
+    // Replace only the same-type slot on that day; the other type can coexist.
+    setSlots(prev => [...prev.filter(s => !(s.dayOfWeek === dayOfWeek && s.type === type)), slot])
     return slot
   }
 
@@ -519,12 +524,26 @@ export default function PlannerClient({
   }
 
   // Assign a routine day to a specific day via the picker modal
-  async function pickAssign(routineDayId: string) {
+  async function pickAssign(routineDayId: string, type: SlotType) {
     if (!pickFor) return
     const dayOfWeek = DAY_KEYS.indexOf(pickFor)
-    await assignSlot(dayOfWeek, routineDayId)
+    await assignSlot(dayOfWeek, routineDayId, type)
     setPickFor(null)
     showToast('Workout added')
+  }
+
+  // Save the current week as the persistent default that auto-fills future empty weeks.
+  async function saveAsDefault() {
+    const tmpl = slots
+      .filter(s => s.routineDay)
+      .map(s => ({ dayOfWeek: s.dayOfWeek, type: s.type, routineDayId: s.routineDay!.id }))
+    await fetch('/api/template', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ slots: tmpl }),
+    })
+    setHasDefault(true)
+    showToast(`Saved as default week · ${tmpl.length} workouts`)
   }
 
   // Distribute full routine across a week (smart spacing)
@@ -537,7 +556,7 @@ export default function PlannerClient({
     const slots_ = DISTRIBUTION[routine.days.length] ?? routine.days.map((_, i) => i)
     await Promise.all(routine.days.map((day, i) => {
       const dow = slots_[i] ?? i
-      return assignSlot(dow, day.id)
+      return assignSlot(dow, day.id, routine.type)
     }))
     await loadWeek(weekStart)
     showToast(`${routine.name} added · ${routine.days.length} sessions placed`, async () => {
@@ -617,12 +636,13 @@ export default function PlannerClient({
 
   async function handlePlace(dayKey: string, payload: ArmedState, dow?: number) {
     const dayOfWeek = dow ?? DAY_KEYS.indexOf(dayKey)
+    const type = payload.routineDay.routine.type
     if (payload.kind === 'lib') {
-      await assignSlot(dayOfWeek, payload.routineDay.id)
+      await assignSlot(dayOfWeek, payload.routineDay.id, type)
     } else {
       // move: remove old, assign to new
       await removeSlot(payload.slotId)
-      await assignSlot(dayOfWeek, payload.routineDay.id)
+      await assignSlot(dayOfWeek, payload.routineDay.id, type)
     }
     setArmed(null)
     await loadWeek(weekStart)
@@ -635,9 +655,9 @@ export default function PlannerClient({
 
   async function toggleRest(dayKey: string) {
     const dow = DAY_KEYS.indexOf(dayKey)
-    const existing = slots.find(s => s.dayOfWeek === dow)
-    if (existing?.routineDay) {
-      await removeSlot(existing.id)
+    const existing = slots.filter(s => s.dayOfWeek === dow && s.routineDay)
+    if (existing.length) {
+      await Promise.all(existing.map(s => removeSlot(s.id)))
       await loadWeek(weekStart)
     }
   }
@@ -649,14 +669,14 @@ export default function PlannerClient({
     showToast('Week cleared', async () => {
       // re-assign previous slots
       for (const s of undoRef.current) {
-        if (s.routineDay) await assignSlot(s.dayOfWeek, s.routineDay.id)
+        if (s.routineDay) await assignSlot(s.dayOfWeek, s.routineDay.id, s.type)
       }
       await loadWeek(weekStart)
     })
   }
 
-  const slotByKey = Object.fromEntries(
-    DAY_KEYS.map((k, i) => [k, slots.find(s => s.dayOfWeek === i) ?? null])
+  const slotsByKey = Object.fromEntries(
+    DAY_KEYS.map((k, i) => [k, slots.filter(s => s.dayOfWeek === i && s.routineDay)])
   )
 
   const isCurWeek = weekStart === initialWeekStart
@@ -682,6 +702,9 @@ export default function PlannerClient({
                   <Icon name="right" size={17} />
                 </button>
               </div>
+              <button className="btn btn-ghost btn-sm" onClick={saveAsDefault} title="Save this week as the default that auto-fills future weeks">
+                <Icon name="check" size={15} /> {hasDefault ? 'Update default' : 'Save as default'}
+              </button>
               <button className="btn btn-ghost btn-sm" onClick={clearWeek}>
                 <Icon name="x" size={15} /> Clear
               </button>
@@ -696,7 +719,7 @@ export default function PlannerClient({
                 key={k}
                 dayKey={k}
                 date={addDays(weekStart, i)}
-                slot={slotByKey[k]}
+                slots={slotsByKey[k]}
                 today={isCurWeek && k === todayKey}
                 armed={armed}
                 hover={hoverDay === k}
@@ -747,7 +770,7 @@ export default function PlannerClient({
                           key={d.id}
                           className="day-chip"
                           style={{ width: '100%', textAlign: 'left', cursor: 'pointer' }}
-                          onClick={() => pickAssign(d.id)}
+                          onClick={() => pickAssign(d.id, r.type)}
                         >
                           <div className="day-chip-info">
                             <div className="day-chip-name">{d.label}</div>

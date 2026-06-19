@@ -6,13 +6,26 @@ import Link from 'next/link'
 import { Icon } from '@/components/Icon'
 import ExerciseProgressWidget from './ExerciseProgressWidget'
 import ExerciseGallery from './ExerciseGallery'
+import MobilityVideo from './MobilityVideo'
+import MobilityNotes from './MobilityNotes'
 import DeleteExerciseButton from './DeleteExerciseButton'
 import EditMusclesButton from './EditMusclesButton'
 
 export const dynamic = 'force-dynamic'
 
-export default async function ExerciseDetailPage({ params }: { params: Promise<{ slug: string }> }) {
+export default async function ExerciseDetailPage({
+  params,
+  searchParams,
+}: {
+  params: Promise<{ slug: string }>
+  searchParams: Promise<{ from?: string }>
+}) {
   const { slug } = await params
+  const { from } = await searchParams
+
+  // Dynamic back target: return to the session the user came from, else the library.
+  const backHref = from?.startsWith('/log/') ? from : '/exercises'
+  const backLabel = from?.startsWith('/log/') ? 'Session' : 'Library'
 
   const exercise = await prisma.exercise.findUnique({
     where: { slug },
@@ -48,9 +61,11 @@ export default async function ExerciseDetailPage({ params }: { params: Promise<{
     }
   })
 
+  const isMobility = exercise.type === 'mobility'
   const primary = parseMuscles(exercise.primaryMuscles)
   const secondary = parseMuscles(exercise.secondaryMuscles)
   const primaryVar = `var(${muscleVar(primary[0] ?? 'core')})`
+  const cap = (s: string) => s.charAt(0).toUpperCase() + s.slice(1)
 
   let images: (string | null)[] = []
   try { images = JSON.parse(exercise.images) } catch { images = [] }
@@ -61,8 +76,8 @@ export default async function ExerciseDetailPage({ params }: { params: Promise<{
     <AppShell>
       <div className="page-content">
         <div className="page page-detail">
-          <Link href="/exercises" className="back-btn">
-            <Icon name="arrow-left" size={16} /> Library
+          <Link href={backHref} className="back-btn">
+            <Icon name="arrow-left" size={16} /> {backLabel}
           </Link>
 
           <div className="detail-head">
@@ -70,12 +85,21 @@ export default async function ExerciseDetailPage({ params }: { params: Promise<{
             <div>
               <h1 className="detail-title">{exercise.name}</h1>
               <div className="detail-sub">
-                {primary[0] && (
-                  <span className="m-pill" style={{ background: primaryVar }}>
-                    {muscleLabel(primary[0])}
-                  </span>
+                {isMobility ? (
+                  <>
+                    <span className="m-pill" style={{ background: primaryVar }}>Mobility</span>
+                    <span>{cap(exercise.category)}</span>
+                  </>
+                ) : (
+                  <>
+                    {primary[0] && (
+                      <span className="m-pill" style={{ background: primaryVar }}>
+                        {muscleLabel(primary[0])}
+                      </span>
+                    )}
+                    <span>{exercise.equipment}</span>
+                  </>
                 )}
-                <span>{exercise.equipment}</span>
               </div>
             </div>
           </div>
@@ -83,49 +107,70 @@ export default async function ExerciseDetailPage({ params }: { params: Promise<{
           <div className="detail-grid">
             {/* LEFT: sticky sidebar */}
             <aside className="detail-aside">
-              <ExerciseGallery
-                slug={exercise.slug}
-                name={exercise.name}
-                secondaryCount={secondary.length}
-                images={images}
-              />
+              {isMobility ? (
+                <MobilityVideo slug={exercise.slug} initialVideo={exercise.videoPath} />
+              ) : (
+                <ExerciseGallery
+                  slug={exercise.slug}
+                  name={exercise.name}
+                  secondaryCount={secondary.length}
+                  images={images}
+                />
+              )}
 
-              <div className="primary-card">
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
-                  <span className="st-label">Targets</span>
-                  <EditMusclesButton slug={exercise.slug} primary={primary} secondary={secondary} />
+              {isMobility ? (
+                <div className="primary-card">
+                  <span className="st-label">Mobility</span>
+                  <div className="primary-pills">
+                    <span className="m-pill" style={{ background: primaryVar }}>{cap(exercise.category)}</span>
+                  </div>
+                  <div className="primary-meta">
+                    <div className="pm-row"><span>Type</span><b>Mobility</b></div>
+                    <div className="pm-row"><span>Group</span><b>{cap(exercise.category)}</b></div>
+                  </div>
                 </div>
-                <div className="primary-pills">
-                  {primary[0] && (
-                    <span className="m-pill" style={{ background: primaryVar }}>
-                      {muscleLabel(primary[0])}
-                    </span>
-                  )}
-                  {secondary.map(m => (
-                    <span
-                      key={m}
-                      className="m-pill m-pill-ghost"
-                      style={{ color: `var(${muscleVar(m)})`, borderColor: `var(${muscleVar(m)})` }}
-                    >
-                      {muscleLabel(m)}
-                    </span>
-                  ))}
+              ) : (
+                <div className="primary-card">
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
+                    <span className="st-label">Targets</span>
+                    <EditMusclesButton slug={exercise.slug} primary={primary} secondary={secondary} />
+                  </div>
+                  <div className="primary-pills">
+                    {primary[0] && (
+                      <span className="m-pill" style={{ background: primaryVar }}>
+                        {muscleLabel(primary[0])}
+                      </span>
+                    )}
+                    {secondary.map(m => (
+                      <span
+                        key={m}
+                        className="m-pill m-pill-ghost"
+                        style={{ color: `var(${muscleVar(m)})`, borderColor: `var(${muscleVar(m)})` }}
+                      >
+                        {muscleLabel(m)}
+                      </span>
+                    ))}
+                  </div>
+                  <div className="primary-meta">
+                    <div className="pm-row"><span>Equipment</span><b>{exercise.equipment}</b></div>
+                    <div className="pm-row"><span>Logged</span><b>{allSessionExercises.length} sessions</b></div>
+                  </div>
                 </div>
-                <div className="primary-meta">
-                  <div className="pm-row"><span>Equipment</span><b>{exercise.equipment}</b></div>
-                  <div className="pm-row"><span>Logged</span><b>{allSessionExercises.length} sessions</b></div>
-                </div>
-              </div>
+              )}
 
               <DeleteExerciseButton slug={exercise.slug} name={exercise.name} />
             </aside>
 
-            {/* RIGHT: stats + chart + history */}
+            {/* RIGHT: stats + chart + history (mobility has no records) */}
             <div className="detail-main">
-              <ExerciseProgressWidget
-                points={progressPoints}
-                muscleColor={primaryVar}
-              />
+              {isMobility ? (
+                <MobilityNotes slug={exercise.slug} initialNotes={exercise.instructions ?? ''} />
+              ) : (
+                <ExerciseProgressWidget
+                  points={progressPoints}
+                  muscleColor={primaryVar}
+                />
+              )}
             </div>
           </div>
         </div>

@@ -162,12 +162,14 @@ export default async function Home() {
                 </div>
                 <div className="week-goal">
                   <div className="week-goal-bar">
-                    <div style={{ width: `${Math.min(100, (thisWeek.sessions / thisWeek.goal) * 100)}%` }} />
+                    <div style={{ width: `${thisWeek.goal > 0 ? Math.min(100, (thisWeek.sessions / thisWeek.goal) * 100) : 0}%` }} />
                   </div>
                   <span className="week-goal-txt">
-                    {toGo === 0
-                      ? <><b>Goal hit.</b> {thisWeek.sessions} of {thisWeek.goal} sessions.</>
-                      : <><b>{toGo} to go</b> — {thisWeek.sessions} of {thisWeek.goal} this week.</>}
+                    {thisWeek.goal === 0
+                      ? <>No workouts planned. Set your <b>default week</b> in the planner.</>
+                      : toGo === 0
+                        ? <><b>Goal hit.</b> {thisWeek.sessions} of {thisWeek.goal} sessions.</>
+                        : <><b>{toGo} to go</b> — {thisWeek.sessions} of {thisWeek.goal} this week.</>}
                   </span>
                 </div>
               </section>

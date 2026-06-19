@@ -540,8 +540,10 @@ input, select, textarea { font: inherit; color: inherit; }
 
 /* ── Detail two-column grid ── */
 .detail-grid { display: grid; grid-template-columns: 320px minmax(0, 1fr); gap: 24px; align-items: start; }
-.detail-aside { position: sticky; top: 20px; display: flex; flex-direction: column; gap: 12px; }
-.detail-main { display: flex; flex-direction: column; }
+.detail-aside { position: sticky; top: 20px; display: flex; flex-direction: column; gap: 12px; min-width: 0; }
+/* min-width:0 lets this grid column shrink below the chart carousel's intrinsic width
+   (grid/flex items default to min-width:auto), preventing horizontal overflow on mobile. */
+.detail-main { display: flex; flex-direction: column; min-width: 0; }
 
 /* ── Compact image gallery ── */
 .ex-gallery { display: flex; flex-direction: column; gap: 8px; }
@@ -621,24 +623,12 @@ input, select, textarea { font: inherit; color: inherit; }
 .chart-title { font-size: 14px; font-weight: 700; color: var(--ink); letter-spacing: -0.01em; }
 .chart-unit  { font-size: 11.5px; color: var(--ink-4); white-space: nowrap; }
 
-@keyframes slideFromLeft {
-  from { opacity: 0; transform: translateX(-28px); }
-  to   { opacity: 1; transform: translateX(0); }
-}
-@keyframes slideFromRight {
-  from { opacity: 0; transform: translateX(28px); }
-  to   { opacity: 1; transform: translateX(0); }
-}
-@keyframes chartFadeUp {
-  from { opacity: 0; transform: translateY(6px); }
-  to   { opacity: 1; transform: translateY(0); }
-}
 .chart { position: relative; }
-/* clip the horizontal slide, but let the hover tooltip overflow upward */
-.chart-anim-wrap { overflow-x: clip; overflow-y: visible; }
-.chart-anim-wrap[data-dir="prev"] { animation: slideFromLeft  0.3s var(--ease) both; }
-.chart-anim-wrap[data-dir="next"] { animation: slideFromRight 0.3s var(--ease) both; }
-.chart-anim-wrap[data-dir="up"]   { animation: chartFadeUp   0.3s var(--ease) both; }
+/* Carousel: pages laid side-by-side, the track slides between them on pagination.
+   Clip horizontally so off-screen panels hide, but let the hover tooltip overflow up. */
+.chart-carousel { overflow-x: clip; overflow-y: visible; }
+.chart-track { display: flex; transition: transform 0.35s var(--ease); }
+.chart-panel { flex: 0 0 100%; min-width: 0; }
 .chart-tip {
   position: absolute; top: -2px; transform: translateX(-50%);
   background: var(--ink); color: var(--bg);
@@ -903,6 +893,36 @@ input, select, textarea { font: inherit; color: inherit; }
 }
 @media (min-width: 768px) { .log-toast { bottom: 24px; } }
 
+.session-mobility { border-left: 3px solid var(--m-core); }
+
+/* Mobility demo video */
+.ex-video-frame {
+  width: 100%; aspect-ratio: 3 / 4; max-height: 60vh; border-radius: var(--r-md, 12px);
+  overflow: hidden; background: var(--bg-sunken); cursor: pointer;
+  display: grid; place-items: center; border: 1px solid var(--line);
+}
+.ex-video-frame video { width: 100%; height: 100%; object-fit: cover; display: block; }
+.ex-video-empty {
+  display: flex; flex-direction: column; align-items: center; gap: 8px;
+  color: var(--ink-3); font-size: 13px; font-weight: 600;
+}
+.mob-video .replace-btn { margin-top: 10px; width: 100%; justify-content: center; }
+.mob-notes-area {
+  width: 100%; resize: vertical; min-height: 120px;
+  background: var(--bg); color: var(--ink); font-size: 14.5px; line-height: 1.55;
+  border: 1px solid var(--line); border-radius: var(--r-md, 12px);
+  padding: 12px 14px; outline: none; font-family: inherit;
+}
+.mob-notes-area:focus { border-color: var(--accent); }
+
+.log-done-note {
+  display: flex; align-items: center; gap: 8px;
+  background: var(--accent-soft); color: var(--accent);
+  font-size: 13.5px; font-weight: 600;
+  padding: 12px 16px; border-radius: var(--r-md, 12px);
+  margin-bottom: 12px;
+}
+
 @media (hover: none) {
   .set-del { opacity: 1; }
 }
@@ -1001,7 +1021,7 @@ input, select, textarea { font: inherit; color: inherit; }
   .stat-tiles { gap: 8px; }
   .stat-tile  { padding: 12px; }
   .st-val     { font-size: 22px; }
-  .detail-grid { grid-template-columns: 1fr; gap: 18px; }
+  .detail-grid { grid-template-columns: minmax(0, 1fr); gap: 18px; }
   .detail-aside { position: static; }
   .ex-frame-main { aspect-ratio: 16 / 10; max-height: 240px; }
 }

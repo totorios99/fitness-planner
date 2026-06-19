@@ -80,6 +80,10 @@ function normalize(s: string): string {
   return s.toLowerCase().replace(/[^a-z0-9]/g, '')
 }
 
+function isUnilateral(name: string): boolean {
+  return /single (leg|arm)|one[- ]arm|one[- ]leg|unilateral/i.test(name)
+}
+
 // ── Main ───────────────────────────────────────────────────────────────────────
 
 async function main() {
@@ -101,13 +105,10 @@ async function main() {
   const libExercises = await prisma.exercise.findMany({ select: { id: true, name: true, slug: true } })
   const exByNorm = new Map(libExercises.map(e => [normalize(e.name), e]))
 
+  // Exact-name match only — Strong name is source of truth. Variants (unilateral, cable
+  // vs barbell, seated vs lying) are distinct names → distinct records.
   function matchExercise(rawName: string) {
-    const n = normalize(rawName)
-    if (exByNorm.has(n)) return exByNorm.get(n)!
-    for (const [key, ex] of exByNorm) {
-      if (key.includes(n) || n.includes(key)) return ex
-    }
-    return null
+    return exByNorm.get(normalize(rawName)) ?? null
   }
 
   // ── Collect all unique CSV exercise names & create missing ones ─────────────
@@ -140,6 +141,8 @@ async function main() {
           slug: ex.slug,
           category: ex.category,
           equipment: ex.equipment,
+          type: 'lifting',
+          unilateral: isUnilateral(ex.name),
           primaryMuscles:   JSON.stringify(ex.primary),
           secondaryMuscles: JSON.stringify(ex.secondary),
         },

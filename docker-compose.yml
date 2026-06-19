@@ -2,7 +2,8 @@ name: forma
 
 services:
   forma:
-    build: .
+    image: forma:local
+    pull_policy: never
     container_name: forma
     ports:
       - "3001:3000"
@@ -37,7 +38,7 @@ x-casaos:
     en_us: >-
       Forma — import Strong workout exports, track history, manage an exercise
       library with muscle targeting, plan weekly routines, and chart progress.
-  icon: https://raw.githubusercontent.com/walkxcode/dashboard-icons/main/png/dumbbell.png
+  icon: http://192.168.0.84:3001/icon.png
   port_map: "3001"
   scheme: http
   index: /

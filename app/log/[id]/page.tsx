@@ -1,6 +1,6 @@
 import { notFound } from 'next/navigation'
 import { prisma } from '@/lib/prisma'
-import { parseMuscles } from '@/lib/muscles'
+import { parseMuscles, effectiveSets } from '@/lib/muscles'
 import { AppShell } from '@/components/AppShell'
 
 import { MuscleTag } from '@/components/MuscleTag'
@@ -35,7 +35,7 @@ export default async function SessionPage({ params }: { params: Promise<{ id: st
   const muscleSets: Record<string, number> = {}
   for (const ex of session.exercises) {
     if (!ex.exercise) continue
-    const n = ex.sets.length
+    const n = effectiveSets(ex.sets.length, ex.exercise.unilateral)
     for (const m of parseMuscles(ex.exercise.primaryMuscles)) {
       muscleSets[m] = (muscleSets[m] ?? 0) + n
     }
@@ -116,7 +116,7 @@ export default async function SessionPage({ params }: { params: Promise<{ id: st
                       <div>
                         <div style={{ fontWeight: 600, fontSize: 15 }}>
                           {ex.exercise ? (
-                            <Link href={`/exercises/${ex.exercise.slug}`} style={{ color: 'var(--accent)', textDecoration: 'none' }}>
+                            <Link href={`/exercises/${ex.exercise.slug}?from=/log/${session.id}`} style={{ color: 'var(--accent)', textDecoration: 'none' }}>
                               {ex.rawName}
                             </Link>
                           ) : (

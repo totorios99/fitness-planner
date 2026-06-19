@@ -12,10 +12,13 @@ model Exercise {
   slug             String            @unique
   category         String
   equipment        String
+  type             String            @default("lifting") // lifting | mobility
+  unilateral       Boolean           @default(false)
   primaryMuscles   String
   secondaryMuscles String            @default("[]")
   imagePath        String?
   images           String            @default("[]")
+  videoPath        String?
   instructions     String?
   createdAt        DateTime          @default(now())
   sessionExercises SessionExercise[]
@@ -28,6 +31,7 @@ model WorkoutSession {
   label     String
   notes     String?
   source    String            @default("manual")
+  type      String            @default("lifting") // lifting | mobility
   createdAt DateTime          @default(now())
   exercises SessionExercise[]
 }
@@ -57,30 +61,45 @@ model Routine {
   id          String       @id @default(cuid())
   name        String
   description String?
+  type        String       @default("lifting") // lifting | mobility
   daysPerWeek Int
   createdAt   DateTime     @default(now())
   days        RoutineDay[]
 }
 
 model RoutineDay {
-  id           String            @id @default(cuid())
-  routineId    String
-  routine      Routine           @relation(fields: [routineId], references: [id], onDelete: Cascade)
-  dayIndex     Int
-  label        String
-  exercises    RoutineExercise[]
-  plannerSlots PlannerSlot[]
+  id            String            @id @default(cuid())
+  routineId     String
+  routine       Routine           @relation(fields: [routineId], references: [id], onDelete: Cascade)
+  dayIndex      Int
+  label         String
+  exercises     RoutineExercise[]
+  plannerSlots  PlannerSlot[]
+  templateSlots TemplateSlot[]
 }
 
 model PlannerSlot {
   id           String      @id @default(cuid())
   weekStart    DateTime
   dayOfWeek    Int
+  type         String      @default("lifting") // lifting | mobility
   routineDayId String?
   routineDay   RoutineDay? @relation(fields: [routineDayId], references: [id], onDelete: SetNull)
   createdAt    DateTime    @default(now())
 
-  @@unique([weekStart, dayOfWeek])
+  @@unique([weekStart, dayOfWeek, type])
+}
+
+// Persistent default week. Auto-fills an empty planner week. Undeletable by design
+// (the rows always exist for the 7 days × type); routineDayId reassignable at will.
+model TemplateSlot {
+  id           String      @id @default(cuid())
+  dayOfWeek    Int
+  type         String      @default("lifting") // lifting | mobility
+  routineDayId String?
+  routineDay   RoutineDay? @relation(fields: [routineDayId], references: [id], onDelete: SetNull)
+
+  @@unique([dayOfWeek, type])
 }
 
 model RoutineExercise {

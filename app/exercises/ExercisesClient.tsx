@@ -9,6 +9,7 @@ import { Icon } from '@/components/Icon'
 const CATEGORIES = ['all', 'push', 'pull', 'legs', 'core']
 const EQUIPMENT  = ['all', 'barbell', 'cable', 'machine', 'dumbbell', 'bodyweight', 'other']
 const MUSCLE_KEYS = Object.keys(MUSCLES)
+const MOBILITY_GROUPS = ['core', 'legs', 'back', 'shoulders', 'general']
 
 const CAT_MUSCLES: Record<string, string[]> = {
   push: ['chest', 'shoulders', 'triceps'],
@@ -52,7 +53,9 @@ export default function ExercisesClient({ exercises }: { exercises: Exercise[] }
   const [eq, setEq] = useState('all')
   const [showNew, setShowNew] = useState(false)
   const [newName, setNewName] = useState('')
+  const [newType, setNewType] = useState<'lifting' | 'mobility'>('lifting')
   const [newCat, setNewCat] = useState('push')
+  const [newGroup, setNewGroup] = useState('general')
   const [newEq, setNewEq] = useState('barbell')
   const [newPrimary, setNewPrimary] = useState<string[]>([])
   const [newSecondary, setNewSecondary] = useState<string[]>([])
@@ -76,16 +79,14 @@ export default function ExercisesClient({ exercises }: { exercises: Exercise[] }
     if (!newName.trim()) return
     setCreating(true)
     try {
+      // Mobility movements carry only a group (stored in category) — no muscles/equipment.
+      const payload = newType === 'mobility'
+        ? { name: newName.trim(), type: 'mobility', category: newGroup, equipment: 'other', primaryMuscles: [], secondaryMuscles: [] }
+        : { name: newName.trim(), type: 'lifting', category: newCat, equipment: newEq, primaryMuscles: newPrimary, secondaryMuscles: newSecondary }
       const res = await fetch('/api/exercises', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          name: newName.trim(),
-          category: newCat,
-          equipment: newEq,
-          primaryMuscles: newPrimary,
-          secondaryMuscles: newSecondary,
-        }),
+        body: JSON.stringify(payload),
       })
       if (!res.ok) throw new Error()
       const data = await res.json()
@@ -209,58 +210,88 @@ export default function ExercisesClient({ exercises }: { exercises: Exercise[] }
                 />
               </div>
               <div className="field">
-                <span>Category</span>
-                <select value={newCat} onChange={e => setNewCat(e.target.value)}>
-                  {['push','pull','legs','core','other'].map(c => (
-                    <option key={c} value={c}>{c.charAt(0).toUpperCase() + c.slice(1)}</option>
-                  ))}
-                </select>
-              </div>
-              <div className="field">
-                <span>Equipment</span>
-                <select value={newEq} onChange={e => setNewEq(e.target.value)}>
-                  {['barbell','dumbbell','cable','machine','bodyweight','other'].map(e => (
-                    <option key={e} value={e}>{e.charAt(0).toUpperCase() + e.slice(1)}</option>
-                  ))}
-                </select>
-              </div>
-              <div className="field">
-                <span>Primary muscles</span>
-                <div className="muscle-picker">
-                  {MUSCLE_KEYS.map(m => (
+                <span>Type</span>
+                <div className="segmented" style={{ width: 'fit-content' }}>
+                  {(['lifting', 'mobility'] as const).map(t => (
                     <button
-                      key={m}
+                      key={t}
                       type="button"
-                      className={`muscle-chip${newPrimary.includes(m) ? ' active' : ''}`}
-                      onClick={() => togglePrimary(m)}
+                      className={`seg-btn${newType === t ? ' active' : ''}`}
+                      onClick={() => setNewType(t)}
+                      style={{ flex: 'none', minWidth: 80, textTransform: 'capitalize' }}
                     >
-                      <span className="muscle-dot" style={{ background: `var(${muscleVar(m)})` }} />
-                      {muscleLabel(m)}
+                      {t}
                     </button>
                   ))}
                 </div>
               </div>
-              <div className="field">
-                <span>Secondary muscles</span>
-                <div className="muscle-picker">
-                  {MUSCLE_KEYS.map(m => {
-                    const isPrimary = newPrimary.includes(m)
-                    return (
-                      <button
-                        key={m}
-                        type="button"
-                        className={`muscle-chip${newSecondary.includes(m) ? ' active' : ''}`}
-                        onClick={() => toggleSecondary(m)}
-                        disabled={isPrimary}
-                        style={isPrimary ? { opacity: 0.3, cursor: 'not-allowed' } : undefined}
-                      >
-                        <span className="muscle-dot" style={{ background: `var(${muscleVar(m)})` }} />
-                        {muscleLabel(m)}
-                      </button>
-                    )
-                  })}
+
+              {newType === 'mobility' ? (
+                <div className="field">
+                  <span>Group</span>
+                  <select value={newGroup} onChange={e => setNewGroup(e.target.value)}>
+                    {MOBILITY_GROUPS.map(g => (
+                      <option key={g} value={g}>{g.charAt(0).toUpperCase() + g.slice(1)}</option>
+                    ))}
+                  </select>
                 </div>
-              </div>
+              ) : (
+                <>
+                  <div className="field">
+                    <span>Category</span>
+                    <select value={newCat} onChange={e => setNewCat(e.target.value)}>
+                      {['push','pull','legs','core','other'].map(c => (
+                        <option key={c} value={c}>{c.charAt(0).toUpperCase() + c.slice(1)}</option>
+                      ))}
+                    </select>
+                  </div>
+                  <div className="field">
+                    <span>Equipment</span>
+                    <select value={newEq} onChange={e => setNewEq(e.target.value)}>
+                      {['barbell','dumbbell','cable','machine','bodyweight','other'].map(e => (
+                        <option key={e} value={e}>{e.charAt(0).toUpperCase() + e.slice(1)}</option>
+                      ))}
+                    </select>
+                  </div>
+                  <div className="field">
+                    <span>Primary muscles</span>
+                    <div className="muscle-picker">
+                      {MUSCLE_KEYS.map(m => (
+                        <button
+                          key={m}
+                          type="button"
+                          className={`muscle-chip${newPrimary.includes(m) ? ' active' : ''}`}
+                          onClick={() => togglePrimary(m)}
+                        >
+                          <span className="muscle-dot" style={{ background: `var(${muscleVar(m)})` }} />
+                          {muscleLabel(m)}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                  <div className="field">
+                    <span>Secondary muscles</span>
+                    <div className="muscle-picker">
+                      {MUSCLE_KEYS.map(m => {
+                        const isPrimary = newPrimary.includes(m)
+                        return (
+                          <button
+                            key={m}
+                            type="button"
+                            className={`muscle-chip${newSecondary.includes(m) ? ' active' : ''}`}
+                            onClick={() => toggleSecondary(m)}
+                            disabled={isPrimary}
+                            style={isPrimary ? { opacity: 0.3, cursor: 'not-allowed' } : undefined}
+                          >
+                            <span className="muscle-dot" style={{ background: `var(${muscleVar(m)})` }} />
+                            {muscleLabel(m)}
+                          </button>
+                        )
+                      })}
+                    </div>
+                  </div>
+                </>
+              )}
             </div>
             <div className="sheet-modal-foot">
               <button className="btn btn-ghost" onClick={() => setShowNew(false)}>Cancel</button>

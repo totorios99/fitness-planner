@@ -1,5 +1,6 @@
 import { prisma } from '@/lib/prisma'
-import { parseMuscles } from '@/lib/muscles'
+import { parseMuscles, effectiveSets } from '@/lib/muscles'
+import { ensureWeekPopulated, mondayIso } from '@/lib/planner'
 
 // ── Public shapes ────────────────────────────────────────
 export interface ThisWeek {
@@ -49,7 +50,6 @@ export interface HomeData {
 }
 
 const WEEKS = 24
-const WEEKLY_GOAL = 5
 
 // level from a day's set count — matches the prototype thresholds
 function levelFor(sets: number): 0 | 1 | 2 | 3 {
@@ -65,13 +65,14 @@ function dayKey(d: Date): string {
 }
 
 function topMusclesFrom(
-  exercises: { exercise: { primaryMuscles: string } | null; sets: { weightLb: number; reps: number }[] }[],
+  exercises: { exercise: { primaryMuscles: string; unilateral: boolean } | null; sets: { weightLb: number; reps: number }[] }[],
 ): string[] {
   const counts: Record<string, number> = {}
   for (const ex of exercises) {
     if (!ex.exercise) continue
+    const sets = effectiveSets(ex.sets.length, ex.exercise.unilateral)
     for (const m of parseMuscles(ex.exercise.primaryMuscles)) {
-      counts[m] = (counts[m] ?? 0) + ex.sets.length
+      counts[m] = (counts[m] ?? 0) + sets
     }
   }
   return Object.entries(counts).sort((a, b) => b[1] - a[1]).slice(0, 3).map(e => e[0])
@@ -79,6 +80,8 @@ function topMusclesFrom(
 
 export async function getHomeData(): Promise<HomeData> {
   const today = new Date()
+  const weekIso = mondayIso(today)
+  await ensureWeekPopulated(weekIso)
 
   // Monday of the current week (local)
   const dow = (today.getDay() + 6) % 7 // 0 = Monday
@@ -87,20 +90,25 @@ export async function getHomeData(): Promise<HomeData> {
   const windowStart = new Date(curMon)
   windowStart.setDate(curMon.getDate() - (WEEKS - 1) * 7)
 
-  const [windowSessions, total] = await Promise.all([
+  const [windowSessions, total, plannedThisWeek] = await Promise.all([
     prisma.workoutSession.findMany({
       where: { date: { gte: windowStart } },
       orderBy: { date: 'desc' },
       include: {
         exercises: {
           include: {
-            exercise: { select: { primaryMuscles: true } },
+            exercise: { select: { primaryMuscles: true, unilateral: true } },
             sets: { select: { weightLb: true, reps: true } },
           },
         },
       },
     }),
     prisma.workoutSession.count(),
+    // Weekly goal = loggable (lifting) workouts planned this week. Mobility is plan-only,
+    // never logged, so it would never count toward "sessions done" — exclude it from the goal.
+    prisma.plannerSlot.count({
+      where: { weekStart: new Date(weekIso), routineDayId: { not: null }, type: 'lifting' },
+    }),
   ])
 
   // Per-session aggregates
@@ -129,14 +137,13 @@ export async function getHomeData(): Promise<HomeData> {
     sessionsByDay[k] = (sessionsByDay[k] ?? 0) + 1
   }
 
-  // ── This week (last 7 days) ──
-  const weekAgo = new Date(today.getFullYear(), today.getMonth(), today.getDate() - 6)
-  const wk = agg.filter(s => s.date >= weekAgo)
+  // ── This week (calendar week, Monday→now) — matches the planner/goal boundary ──
+  const wk = agg.filter(s => s.date >= curMon)
   const thisWeek: ThisWeek = {
     sessions: wk.length,
     sets: wk.reduce((a, s) => a + s.totalSets, 0),
     volume: wk.reduce((a, s) => a + s.totalVol, 0),
-    goal: WEEKLY_GOAL,
+    goal: plannedThisWeek,
   }
 
   // ── Recent (4 newest) ──

@@ -19,19 +19,21 @@ import { CSS } from '@dnd-kit/utilities'
 import { MuscleTag } from '@/components/MuscleTag'
 import { parseMuscles } from '@/lib/muscles'
 
-interface ExerciseData { id: string; name: string; slug: string; primaryMuscles: string; equipment: string }
+interface ExerciseData { id: string; name: string; slug: string; primaryMuscles: string; equipment: string; type: string }
 interface RoutineExData { id: string; orderIndex: number; targetSets: number; targetReps: string; exercise: ExerciseData }
 interface RoutineDayData { id: string; label: string; exercises: RoutineExData[] }
 
 function SortableExercise({
   re,
   isLast,
+  seconds,
   onUpdate,
   onDelete,
   nextSetsRef,
 }: {
   re: RoutineExData
   isLast: boolean
+  seconds?: boolean
   onUpdate: (id: string, sets: number, reps: string) => void
   onDelete: (id: string) => void
   nextSetsRef?: React.RefObject<HTMLInputElement | null>
@@ -127,6 +129,7 @@ function SortableExercise({
           }}
           style={{ width: 52, textAlign: 'center', background: 'var(--bg-sunken)', border: '1px solid var(--line)', borderRadius: 'var(--r-sm)', padding: '4px', fontSize: 13 }}
         />
+        {seconds && <span style={{ color: 'var(--ink-3)', fontSize: 12 }}>sec</span>}
         <button
           tabIndex={-1}
           onClick={() => onDelete(re.id)}
@@ -143,15 +146,18 @@ function DayEditor({
   day,
   exercises,
   allExercises,
+  routineType,
   onExercisesChange,
 }: {
   day: RoutineDayData
   exercises: RoutineExData[]
   allExercises: ExerciseData[]
+  routineType: string
   onExercisesChange: (dayId: string, exercises: RoutineExData[]) => void
 }) {
   const [addOpen, setAddOpen] = useState(false)
   const [search, setSearch] = useState('')
+  const isMobility = routineType === 'mobility'
 
   // Collect refs for sets inputs to wire tab navigation
   const setsRefs = useRef<(HTMLInputElement | null)[]>([])
@@ -192,7 +198,8 @@ function DayEditor({
     const res = await fetch(`/api/routine-days/${day.id}/exercises`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ exerciseId }),
+      // Mobility targets are sets × seconds (e.g. 2 × 30s), not weight reps.
+      body: JSON.stringify(isMobility ? { exerciseId, targetSets: 2, targetReps: '30' } : { exerciseId }),
     })
     const re: RoutineExData = await res.json()
     onExercisesChange(day.id, [...exercises, re])
@@ -200,7 +207,9 @@ function DayEditor({
     setSearch('')
   }
 
+  // Only same-type exercises can be added (lifting routine → lifting movements, etc.).
   const filtered = allExercises.filter(e =>
+    e.type === routineType &&
     e.name.toLowerCase().includes(search.toLowerCase()) &&
     !exercises.some(ex => ex.exercise.id === e.id)
   )
@@ -216,6 +225,7 @@ function DayEditor({
                 key={re.id}
                 re={re}
                 isLast={i === exercises.length - 1}
+                seconds={isMobility}
                 onUpdate={handleUpdate}
                 onDelete={handleDelete}
                 nextSetsRef={nextRef}
@@ -270,9 +280,10 @@ export function RoutineEditor({
   routine,
   allExercises,
 }: {
-  routine: { id: string; name: string; description: string | null; daysPerWeek: number; days: RoutineDayData[] }
+  routine: { id: string; name: string; type: string; description: string | null; daysPerWeek: number; days: RoutineDayData[] }
   allExercises: ExerciseData[]
 }) {
+  const isMobility = routine.type === 'mobility'
   const [editMode, setEditMode] = useState(false)
   const [expanded, setExpanded] = useState<Set<string>>(new Set(routine.days.map(d => d.id)))
 
@@ -341,6 +352,7 @@ export function RoutineEditor({
                   day={day}
                   exercises={exercises}
                   allExercises={allExercises}
+                  routineType={routine.type}
                   onExercisesChange={handleExercisesChange}
                 />
               ) : (
@@ -358,7 +370,7 @@ export function RoutineEditor({
                       >
                         <div style={{ fontWeight: 600, fontSize: 14 }}>{re.exercise.name}</div>
                         <div style={{ fontWeight: 700, fontSize: 14, color: 'var(--ink-2)' }}>
-                          {re.targetSets} × {re.targetReps}
+                          {re.targetSets} × {re.targetReps}{isMobility ? 's' : ''}
                         </div>
                       </div>
                     ))

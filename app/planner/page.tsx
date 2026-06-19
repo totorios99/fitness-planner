@@ -1,25 +1,16 @@
 import { prisma } from '@/lib/prisma'
 import { AppShell } from '@/components/AppShell'
+import { ensureWeekPopulated, mondayIso as getMondayIso } from '@/lib/planner'
 
 import PlannerClient from './PlannerClient'
 
 export const dynamic = 'force-dynamic'
 
-function getMondayIso(d: Date): string {
-  const day = d.getDay()
-  const diff = d.getDate() - day + (day === 0 ? -6 : 1)
-  const mon = new Date(d.getFullYear(), d.getMonth(), diff)
-  return [
-    mon.getFullYear(),
-    String(mon.getMonth() + 1).padStart(2, '0'),
-    String(mon.getDate()).padStart(2, '0'),
-  ].join('-')
-}
-
 export default async function PlannerPage() {
   const mondayIso = getMondayIso(new Date())
+  await ensureWeekPopulated(mondayIso)
 
-  const [routines, slots] = await Promise.all([
+  const [routines, slots, templateSlots] = await Promise.all([
     prisma.routine.findMany({
       orderBy: { createdAt: 'asc' },
       include: {
@@ -39,13 +30,18 @@ export default async function PlannerPage() {
       include: {
         routineDay: {
           include: {
-            routine: { select: { id: true, name: true } },
+            routine: { select: { id: true, name: true, type: true } },
             exercises: {
               orderBy: { orderIndex: 'asc' },
               include: { exercise: { select: { name: true, primaryMuscles: true, secondaryMuscles: true } } },
             },
           },
         },
+      },
+    }),
+    prisma.templateSlot.findMany({
+      include: {
+        routineDay: { include: { routine: { select: { id: true, name: true } } } },
       },
     }),
   ])
@@ -55,6 +51,7 @@ export default async function PlannerPage() {
       <PlannerClient
         routines={JSON.parse(JSON.stringify(routines))}
         initialSlots={JSON.parse(JSON.stringify(slots))}
+        initialTemplate={JSON.parse(JSON.stringify(templateSlots))}
         initialWeekStart={mondayIso}
       />
     </AppShell>

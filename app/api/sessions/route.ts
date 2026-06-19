@@ -19,7 +19,7 @@ export async function GET() {
 
 export async function POST(req: Request) {
   try {
-    const { label, exercises } = await req.json()
+    const { label, type, exercises } = await req.json()
     if (!label || !Array.isArray(exercises) || !exercises.length) {
       return Response.json({ error: 'label and exercises required' }, { status: 400 })
     }
@@ -28,6 +28,7 @@ export async function POST(req: Request) {
         date: new Date(),
         label,
         source: 'manual',
+        type: type === 'mobility' ? 'mobility' : 'lifting',
         exercises: {
           create: exercises.map((e: { exerciseId?: string | null; name: string; sets: { weightLb: string | number; reps: string | number }[] }, i: number) => ({
             exerciseId: e.exerciseId || null,

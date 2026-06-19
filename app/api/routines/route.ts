@@ -22,15 +22,20 @@ export async function GET() {
 }
 
 export async function POST(req: NextRequest) {
-  const { name, description, days } = await req.json()
+  const { name, description, type, days } = await req.json()
   // days: Array<{ label: string }>
   if (!name || !Array.isArray(days) || days.length === 0) {
     return Response.json({ error: 'name and days required' }, { status: 400 })
+  }
+  const routineType = type === 'mobility' ? 'mobility' : 'lifting'
+  if (routineType === 'lifting' && days.length < 2) {
+    return Response.json({ error: 'Lifting routines need at least 2 days' }, { status: 400 })
   }
   const routine = await prisma.routine.create({
     data: {
       name: name.trim(),
       description: description?.trim() || null,
+      type: routineType,
       daysPerWeek: days.length,
       days: {
         create: days.map((d: { label: string }, i: number) => ({

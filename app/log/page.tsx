@@ -1,29 +1,24 @@
 import { prisma } from '@/lib/prisma'
 import { AppShell } from '@/components/AppShell'
 import { SessionCard } from '@/components/SessionCard'
+import { ensureWeekPopulated, mondayIso as getMondayIso } from '@/lib/planner'
 import LogClient from './LogClient'
 
 export const dynamic = 'force-dynamic'
-
-function getMondayIso(d: Date): string {
-  const day = d.getDay()
-  const diff = d.getDate() - day + (day === 0 ? -6 : 1)
-  const mon = new Date(d.getFullYear(), d.getMonth(), diff)
-  return [
-    mon.getFullYear(),
-    String(mon.getMonth() + 1).padStart(2, '0'),
-    String(mon.getDate()).padStart(2, '0'),
-  ].join('-')
-}
 
 export default async function LogPage() {
   const today = new Date()
   const dateStr = today.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })
   // Planner stores weekStart as Monday (UTC midnight via ISO) and dayOfWeek Monday-based (0=Mon).
-  const monday = new Date(getMondayIso(today))
+  const mondayIsoStr = getMondayIso(today)
+  await ensureWeekPopulated(mondayIsoStr)
+  const monday = new Date(mondayIsoStr)
   const todayDow = (today.getDay() + 6) % 7
 
-  const [routines, todaySlot, sessions] = await Promise.all([
+  const dayStart = new Date(today.getFullYear(), today.getMonth(), today.getDate())
+  const dayEnd = new Date(dayStart.getTime() + 24 * 60 * 60 * 1000)
+
+  const [routines, todaySlots, loggedToday, sessions] = await Promise.all([
     prisma.routine.findMany({
       orderBy: { createdAt: 'asc' },
       include: {
@@ -38,9 +33,13 @@ export default async function LogPage() {
         },
       },
     }),
-    prisma.plannerSlot.findFirst({
-      where: { weekStart: monday, dayOfWeek: todayDow },
-      select: { routineDayId: true },
+    prisma.plannerSlot.findMany({
+      where: { weekStart: monday, dayOfWeek: todayDow, routineDayId: { not: null } },
+      select: { routineDayId: true, type: true },
+    }),
+    prisma.workoutSession.findMany({
+      where: { date: { gte: dayStart, lt: dayEnd } },
+      select: { type: true },
     }),
     prisma.workoutSession.findMany({
       orderBy: { date: 'desc' },
@@ -56,13 +55,23 @@ export default async function LogPage() {
     }),
   ])
 
+  const doneTypes = new Set(loggedToday.map(s => s.type))
+  // Mobility is plan-only (never logged), so only lifting slots drive the logger.
+  const scheduled = todaySlots
+    .filter(s => s.type === 'lifting')
+    .map(s => ({
+      type: 'lifting' as const,
+      dayId: s.routineDayId as string,
+      done: doneTypes.has('lifting'),
+    }))
+
   return (
     <AppShell>
       <div className="page-content">
         <div className="page page-narrow">
           <LogClient
             routines={JSON.parse(JSON.stringify(routines))}
-            todayDayId={todaySlot?.routineDayId ?? null}
+            scheduled={scheduled}
             dateStr={dateStr}
           />
 
