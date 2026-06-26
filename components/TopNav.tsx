@@ -13,7 +13,7 @@ const NAV = [
 ]
 
 export function TopNav() {
-  const { theme, toggle } = useTheme()
+  const { mode, theme, toggle } = useTheme()
   const pathname = usePathname()
 
   return (
@@ -29,11 +29,7 @@ export function TopNav() {
           {NAV.map(n => {
             const active = n.href === '/' ? pathname === '/' : pathname.startsWith(n.href)
             return (
-              <Link
-                key={n.href}
-                href={n.href}
-                className={`nav-tab${active ? ' active' : ''}`}
-              >
+              <Link key={n.href} href={n.href} className={`nav-tab${active ? ' active' : ''}`}>
                 <Icon name={n.icon} size={16} />
                 <span>{n.label}</span>
               </Link>
@@ -43,8 +39,14 @@ export function TopNav() {
 
         <div className="topbar-spacer" />
 
-        <button className="icon-btn theme-toggle" onClick={toggle} aria-label="Toggle theme">
+        <button
+          className={`icon-btn theme-toggle${mode === 'auto' ? ' theme-auto' : ''}`}
+          onClick={toggle}
+          aria-label={`Theme: ${mode}`}
+          title={`Theme: ${mode} — click to cycle`}
+        >
           <Icon name={theme === 'dark' ? 'sun' : 'moon'} size={18} />
+          {mode === 'auto' && <span className="theme-auto-dot" aria-hidden />}
         </button>
       </div>
     </header>
