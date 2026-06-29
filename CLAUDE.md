@@ -1,6 +1,6 @@
 # Forma — Training Tracker
 
-**v0.4** — Mise glass design system, mobility type, planner polish, import fixes.
+**v0.5** — Home greeting polish, mobile heatmap calendar layout, planner responsive heading, flame icon.
 
 ## Purpose
 
@@ -78,12 +78,15 @@ TemplateSlot      — (dayOfWeek, slotIndex) default week template; nullable rou
 - `lib/strongParser.ts` — parses Strong .txt format (date, exercises, sets)
 - `lib/muscles.ts` — muscle enum + label map; `parseMuscles(json)`, `muscleVar`, `muscleGroup` helpers
 - `lib/home.ts` — `getHomeData()` server data-access: thisWeek / recent / consistency (heatmap weeks + streaks computed in TS)
+- `lib/cal.ts` — `calLevel()` util (maps 0–3 heat level to CSS color); shared by server page + client heatmap
 - `lib/prisma.ts` — Prisma client singleton
 - `components/AppShell.tsx` — layout wrapper: TopNav + shell-main + TabBar
 - `components/TopNav.tsx` — sticky pill topbar (`.topbar` / `.topbar-inner`), theme toggle cycling light→dark→auto
 - `components/TabBar.tsx` — fixed bottom 4-tab nav (mobile)
 - `components/ThemeProvider.tsx` — 3-state theme (light/dark/auto) with live OS tracking
-- `components/home/*` — Home screen islands: `Greeting` (client, local-time greeting), `ConsistencyHeatmap`, `QuickActions`
+- `components/home/Greeting.tsx` — client component; 4-bucket time greeting, date eyebrow (no year), subtitle; uses `.home-eyebrow` / `.home-title` / `.home-sub`
+- `components/home/ConsistencyHeatmap.tsx` — client component; desktop = 24-week scrollable column grid; mobile (≤560px) = 7-col × 5-row calendar layout with week-date labels and tap-to-reveal session info
+- `components/home/QuickActions.tsx` — quick action buttons on home
 - `components/LineChart.tsx` — custom SVG chart (no recharts)
 - `components/MuscleSummary.tsx` — bar list of sets per muscle group
 - `prisma/seed.ts` — 46 exercises + Upper/Lower, PPL, Full Body 3× routines
@@ -108,7 +111,9 @@ Ported from Mise (github.com/totorios99/meal-planner) to match its glass aesthet
 - **Surfaces**: cards/nav/tabbar = `var(--panel)` + `backdrop-filter: blur()` + `--inset-hi` + `--shadow-glass`. Nav and tabbar are floating pills (`--r-pill: 999px`)
 - **Accent — clay**: `--accent: #c98a63`, `--accent-grad` for primary buttons. `--energy` aliased to clay
 - **Theme toggle**: light → dark → auto; stored in `localStorage('forma-theme')`, applied via `[data-theme]` on `<html>`
-- **Type**: `--display` (Geist sans, bold) for titles with gradient `em`. `--serif` (Newsreader) retained but unused on titles now
+- **Type**: `--display` (Geist sans, bold) for titles with gradient `em`. `--serif` (Newsreader) retained but unused on titles now. Geist is a variable font — non-standard weights (450, 650) render correctly without snapping.
+- **Home masthead**: `.home-eyebrow` (12px/650/0.14em/uppercase) → `.home-title` (46px → 32px ≤640px → 28px ≤400px) → `.home-sub` (15px/450). Eyebrow class is separate from `.board-eyebrow` used in Planner.
+- **Planner heading**: `.board-head` uses CSS grid at ≥561px — eyebrow spans top row, title left + week-nav/Clear flush right on same row.
 - **Muscle colors**: kept (functional), oklch with brighter values for dark glass
 - Port: 3001 (Mise uses 3000)
 
