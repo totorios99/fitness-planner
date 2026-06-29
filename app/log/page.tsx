@@ -43,7 +43,7 @@ export default async function LogPage() {
     }),
     prisma.workoutSession.findMany({
       orderBy: { date: 'desc' },
-      take: 20,
+      take: 5,
       include: {
         exercises: {
           include: {
@@ -79,7 +79,7 @@ export default async function LogPage() {
             <div style={{ marginTop: 32 }}>
               <div className="section-head">
                 <span className="section-label">Session History</span>
-                <span className="t-caption">{sessions.length} total</span>
+                <span className="t-caption">Last {sessions.length}</span>
               </div>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
                 {sessions.map(s => (

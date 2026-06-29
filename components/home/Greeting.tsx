@@ -5,7 +5,7 @@ import { useState, useEffect } from 'react'
 function compute(name: string) {
   const now = new Date()
   const h = now.getHours()
-  const greeting = h < 12 ? 'Good morning' : h < 18 ? 'Good afternoon' : 'Good evening'
+  const greeting = h < 12 ? 'Good morning' : h < 17 ? 'Good afternoon' : h < 21 ? 'Good evening' : 'Good night'
   const date = now.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })
   return { greeting, date, name }
 }
@@ -18,8 +18,9 @@ export function Greeting({ name }: { name: string }) {
 
   return (
     <div className="home-mast-text">
-      <div className="board-eyebrow" suppressHydrationWarning>{date}</div>
+      <div className="home-eyebrow" suppressHydrationWarning>{date}</div>
       <h1 className="home-title" suppressHydrationWarning>{greeting}, <em>{name}</em></h1>
+      <p className="home-sub">Here&apos;s your training at a glance.</p>
     </div>
   )
 }

@@ -1,6 +1,6 @@
 # Forma — Training Tracker
 
-**v0.2** — Rebuilt from AI nutrition app → pure gym training tracker. No AI, no nutrition anywhere.
+**v0.4** — Mise glass design system, mobility type, planner polish, import fixes.
 
 ## Purpose
 
@@ -44,7 +44,7 @@ npm run db:studio  # Prisma Studio UI
 
 | Route | Method | Purpose |
 |-------|--------|---------|
-| `/api/import` | POST | Parse Strong .txt, fuzzy-match exercises, save session |
+| `/api/import` | POST | Parse Strong .txt, exact-match exercises, save session (stubs on miss) |
 | `/api/sessions` | GET | All sessions (paginated) |
 | `/api/sessions/[id]` | GET/DELETE | Single session |
 | `/api/exercises` | GET | All exercises |
@@ -52,21 +52,25 @@ npm run db:studio  # Prisma Studio UI
 | `/api/routines` | GET/POST | List/create routines |
 | `/api/routines/[id]` | GET/PUT/DELETE | Routine CRUD |
 | `/api/routine-days` | POST | Add day to routine |
-| `/api/routine-exercises` | POST/DELETE | Add/remove exercise from routine day |
+| `/api/routine-days/[dayId]/exercises` | GET | Exercises for a routine day |
+| `/api/routine-exercises/[id]` | DELETE | Remove exercise from routine day |
 | `/api/planner` | GET/POST | Weekly planner slots |
+| `/api/planner/[slotId]` | DELETE | Remove planner slot |
+| `/api/template` | GET/POST | Default week template slots |
 | `/api/progress/[slug]` | GET | Per-exercise progress points for chart |
 
-## Schema (7 models)
+## Schema (8 models)
 
 ```
-Exercise          — library (46 seeded), primaryMuscles/secondaryMuscles as JSON arrays
-WorkoutSession    — date, label, source ('strong_import'|'manual')
+Exercise          — library (46 seeded), primaryMuscles/secondaryMuscles as JSON arrays, type (lifting|mobility), unilateral bool
+WorkoutSession    — date, label, source ('strong_import'|'manual'), type (lifting|mobility)
 SessionExercise   — links session ↔ exercise, stores rawName for unmatched
 SetLog            — weightLb, reps, setNumber
-Routine           — name, daysPerWeek, description
-RoutineDay        — dayIndex, label, belongs to Routine
+Routine           — name, daysPerWeek, description, type (lifting|mobility)
+RoutineDay        — dayIndex, label, belongs to Routine, type
 RoutineExercise   — exercise + targetSets/targetReps, belongs to RoutineDay
 PlannerSlot       — (weekStart, dayOfWeek) unique; nullable routineDayId
+TemplateSlot      — (dayOfWeek, slotIndex) default week template; nullable routineDayId
 ```
 
 ## Key files
@@ -75,6 +79,10 @@ PlannerSlot       — (weekStart, dayOfWeek) unique; nullable routineDayId
 - `lib/muscles.ts` — muscle enum + label map; `parseMuscles(json)`, `muscleVar`, `muscleGroup` helpers
 - `lib/home.ts` — `getHomeData()` server data-access: thisWeek / recent / consistency (heatmap weeks + streaks computed in TS)
 - `lib/prisma.ts` — Prisma client singleton
+- `components/AppShell.tsx` — layout wrapper: TopNav + shell-main + TabBar
+- `components/TopNav.tsx` — sticky pill topbar (`.topbar` / `.topbar-inner`), theme toggle cycling light→dark→auto
+- `components/TabBar.tsx` — fixed bottom 4-tab nav (mobile)
+- `components/ThemeProvider.tsx` — 3-state theme (light/dark/auto) with live OS tracking
 - `components/home/*` — Home screen islands: `Greeting` (client, local-time greeting), `ConsistencyHeatmap`, `QuickActions`
 - `components/LineChart.tsx` — custom SVG chart (no recharts)
 - `components/MuscleSummary.tsx` — bar list of sets per muscle group
@@ -84,17 +92,29 @@ PlannerSlot       — (weekStart, dayOfWeek) unique; nullable routineDayId
 
 - Primary muscle = sets × 1.0
 - Secondary muscle = sets × 0.5 (rounded up)
+- Unilateral exercises: volume counted per side (×2 effective sets)
 
 ## Image strategy
 
 Exercise photos live at `public/exercises/{slug}.webp`. Upload via exercise detail page → `POST /api/exercises/[slug]/image` → sharp resizes to 480×360. Falls back to emoji placeholder.
 
-## Branding
+## Design system — Mise glass
 
-- `--accent`: `#1E3A5F` (navy)
-- `--energy`: `#D4520C` (orange)
-- Fonts: Geist + Newsreader (same as Mise)
+Ported from Mise (github.com/totorios99/meal-planner) to match its glass aesthetic.
+
+- **Dark-primary** (`color-scheme: dark`), light theme auto-follows OS
+- **Wallpaper**: fixed full-bleed `.wallpaper` div (rendered in `AppShell`) — radial gradients + dark overlay + animated drift. Palette set on `<html data-wallpaper>` (default `mist`; variants `sand`/`plum`/graphite)
+- **Glass material tokens**: `--panel` (translucent gradient fill), `--glass-blur: 28px`, `--stroke` / `--stroke-hi` (translucent borders), `--inset-hi` (top highlight), `--shadow-glass`, `--well` (recessed input bg)
+- **Surfaces**: cards/nav/tabbar = `var(--panel)` + `backdrop-filter: blur()` + `--inset-hi` + `--shadow-glass`. Nav and tabbar are floating pills (`--r-pill: 999px`)
+- **Accent — clay**: `--accent: #c98a63`, `--accent-grad` for primary buttons. `--energy` aliased to clay
+- **Theme toggle**: light → dark → auto; stored in `localStorage('forma-theme')`, applied via `[data-theme]` on `<html>`
+- **Type**: `--display` (Geist sans, bold) for titles with gradient `em`. `--serif` (Newsreader) retained but unused on titles now
+- **Muscle colors**: kept (functional), oklch with brighter values for dark glass
 - Port: 3001 (Mise uses 3000)
+
+## CSS class conventions
+
+Shell: `.app` (root, transparent) + `.wallpaper` (fixed bg) + `.topbar`/`.topbar-inner` (glass pill nav) + `.tabbar`/`.tabbar-item`/`.tabbar-dot` (floating mobile pill). Old `.app-shell`, `.top-nav`, `.tab-bar`, `.tab-item`, `.tab-dot` kept as aliases in globals.css.
 
 ## Docker / CasaOS
 
@@ -111,7 +131,7 @@ Forma as a **native app**, not a legacy imported container. Swap the `icon:` URL
 
 - `main` is always deployable — what CasaOS builds. Work on short-lived `feat/*` / `fix/*` /
   `chore/*` branches, self-review the diff (`/code-review`) before merging, tag deploys
-  (`v0.3`…) for rollback.
+  (`v0.4`…) for rollback.
 - Loop: branch → build → `npm run build` + local click-test → merge `main` → tag → run
   `deploy.sh` on the CasaOS box. Schema changes: `npm run db:push` locally; the container
   auto-pushes on boot.

@@ -97,6 +97,10 @@ function Summary({
 }) {
   const [open, setOpen] = useState(true)
   const [editing, setEditing] = useState(false)
+  // Auto-collapse muscle charts on mobile (default open on desktop)
+  useEffect(() => {
+    if (window.matchMedia('(max-width: 768px)').matches) setOpen(false)
+  }, [])
   const sessions = slots.filter(s => s.routineDay).length
   const sets = slots.reduce((a, s) => a + (s.routineDay?.exercises.length ?? 0) * SETS_PER_EXERCISE, 0)
   const minutes = sets * 3 + sessions * 9
@@ -721,32 +725,30 @@ export default function PlannerClient({
       <div className="workspace">
         <div className="board-col">
           <div className="board-head">
-            <div>
-              <div className="board-eyebrow">
-                Week of {label}
-                {hasDefault && (
-                  <button
-                    className="default-mark"
-                    onClick={saveAsDefault}
-                    title="This week is your default — click to update"
-                  >
-                    <svg viewBox="0 0 24 24" width={12} height={12} fill="currentColor" stroke="none">
-                      <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" />
-                    </svg>
-                    Default
-                  </button>
-                )}
-                {!hasDefault && (
-                  <button className="default-mark default-mark-empty" onClick={saveAsDefault} title="Save this week as your default template">
-                    <svg viewBox="0 0 24 24" width={12} height={12} fill="none" stroke="currentColor" strokeWidth={2}>
-                      <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" />
-                    </svg>
-                    Save as default
-                  </button>
-                )}
-              </div>
-              <h1 className="board-title">Plan your <em>week</em></h1>
+            <div className="board-eyebrow">
+              Week of {label}
+              {hasDefault && (
+                <button
+                  className="default-mark"
+                  onClick={saveAsDefault}
+                  title="This week is your default — click to update"
+                >
+                  <svg viewBox="0 0 24 24" width={12} height={12} fill="currentColor" stroke="none">
+                    <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" />
+                  </svg>
+                  Default
+                </button>
+              )}
+              {!hasDefault && (
+                <button className="default-mark default-mark-empty" onClick={saveAsDefault} title="Save this week as your default template">
+                  <svg viewBox="0 0 24 24" width={12} height={12} fill="none" stroke="currentColor" strokeWidth={2}>
+                    <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" />
+                  </svg>
+                  Save as default
+                </button>
+              )}
             </div>
+            <h1 className="board-title">Plan your <em>week</em></h1>
             <div className="board-head-actions">
               <div className="week-nav">
                 <button onClick={() => shiftWeek(-1)} aria-label="Previous week"><Icon name="left" size={17} /></button>

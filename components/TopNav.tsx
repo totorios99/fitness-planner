@@ -17,7 +17,7 @@ export function TopNav() {
   const pathname = usePathname()
 
   return (
-    <header className="top-nav">
+    <header className="topbar">
       <div className="topbar-inner">
         <Link href="/" className="brand" style={{ textDecoration: 'none' }}>
           <div className="brand-mark">F</div>
@@ -46,7 +46,7 @@ export function TopNav() {
           title={`Theme: ${mode} — click to cycle`}
         >
           <Icon name={theme === 'dark' ? 'sun' : 'moon'} size={18} />
-          {mode === 'auto' && <span className="theme-auto-dot" aria-hidden />}
+          {mode === 'auto' && <span className="auto-dot" aria-hidden />}
         </button>
       </div>
     </header>
