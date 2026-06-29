@@ -12,7 +12,7 @@ DB="$DATA_DIR/forma.db"
 SEED_DB="$HERE/prisma/forma.db"
 
 echo "==> Building image $IMAGE ..."
-docker build -t "$IMAGE" .
+docker build --no-cache -t "$IMAGE" .
 
 # Ensure the DB volume exists. Only seed it from the local DB when it's MISSING,
 # so we never clobber data the running app has already written.

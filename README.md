@@ -36,7 +36,7 @@ npm run db:studio    # Prisma Studio
 ## Deploy (CasaOS / Docker)
 
 ```bash
-./deploy.sh          # docker compose build && up -d
+./deploy.sh          # docker build --no-cache + casaos-cli install
 ```
 
 Publishes on **port 3001**. SQLite lives at `/DATA/AppData/forma/forma.db` on the host. Schema migrations run automatically on container boot (`prisma db push`).
